@@ -12,7 +12,7 @@
     <IsLinux Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Linux)))' == 'True'">True</IsLinux>
   </PropertyGroup>
 
-  <ItemGroup Condition="'$(PublicBuild)' == 'True'">
+  <ItemGroup Condition="'$(IsPublicBuild)' == 'True'">
     <Content Include="./../../artifacts/bin32/SOEM_wrapper/Release/soem_wrapper.dll" Link="runtimes/win-x86/native/soem_wrapper.dll">
       <PackagePath>runtimes/win-x86/native</PackagePath>
     </Content>
@@ -27,7 +27,7 @@
     </Content>
   </ItemGroup>
 
-  <ItemGroup Condition="'$(PublicBuild)' == '' AND $(IsWindows) == 'True'">
+  <ItemGroup Condition="'$(IsPublicBuild)' == '' AND $(IsWindows) == 'True'">
     <Content Include="./../../artifacts/bin32/SOEM_wrapper/Release/soem_wrapper.dll" Link="runtimes/win-x86/native/soem_wrapper.dll">
       <PackagePath>runtimes/win-x86/native</PackagePath>
     </Content>
@@ -36,7 +36,7 @@
     </Content>
   </ItemGroup>
 
-  <ItemGroup Condition="'$(PublicBuild)' == '' AND $(IsLinux) == 'True'">
+  <ItemGroup Condition="'$(IsPublicBuild)' == '' AND $(IsLinux) == 'True'">
     <Content Include="./../../artifacts/bin32/SOEM_wrapper/libsoem_wrapper.so" Link="runtimes/linux-x86/native/libsoem_wrapper.so">
       <PackagePath>runtimes/linux-x86/native</PackagePath>
     </Content>
