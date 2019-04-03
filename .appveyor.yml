@@ -1,0 +1,86 @@
+version: '{build}'
+clone_depth: 1
+
+image:
+- Ubuntu
+- Visual Studio 2017
+
+environment:
+  ApiKey:
+    secure: SeomICfFXAQobyK5uMGeAhb0uljBxicG4Z56pWxWCXA=
+  SatelliteJobName: 'Image: Ubuntu'
+  FileName: 'libsoem_wrapper.so'
+
+branches:
+  only:
+  - master
+
+configuration:
+  - Release
+
+init:
+  - ps: git config --global core.autocrlf true
+
+install:
+- ps: |
+    if ($isLinux) 
+    { 
+      sudo apt-get update
+      sudo apt-get --yes install g++-multilib 
+    }
+
+before_build:
+- ps: dotnet --info
+- ps: "Get-ChildItem Env:"
+- ps: ./init_solution.ps1
+- ps: Import-module ./build/Start-ArtifactDownload.ps1 -Force
+- ps: | 
+    if ($isWindows) 
+    { 
+      New-Item -Force -ItemType directory -Path "./artifacts/download/bin32/"
+      Start-ArtifactDownload -JobName $env:SatelliteJobName -SourceFileName "lib32" -TargetFilePath "./artifacts/download/bin32/$env:FileName" -ApiKey $env:ApiKey
+      New-Item -Force -ItemType directory -Path "./artifacts/download/bin64/"
+      Start-ArtifactDownload -JobName $env:SatelliteJobName -SourceFileName "lib64" -TargetFilePath "./artifacts/download/bin64/$env:FileName" -ApiKey $env:ApiKey 
+    }
+
+build_script:
+- ps: |
+    if ($isLinux) 
+    { 
+      Set-Location -Path "./artifacts/bin32"
+      make
+      Set-Location -Path "./../bin64"
+      make
+      Set-Location -Path "./../../"
+
+      dotnet build .\src\EtherCAT.NET\EtherCAT.NET.csproj -c $Env:CONFIGURATION /p:Build=$Env:APPVEYOR_BUILD_NUMBER /p:IsFinalBuild=$Env:APPVEYOR_REPO_TAG
+    }
+    elseif ($isWindows)
+    { 
+      msbuild .\artifacts\bin32\SOEM_wrapper\soem_wrapper.vcxproj /p:Configuraton=$Env:CONFIGURATION
+      msbuild .\artifacts\bin64\SOEM_wrapper\soem_wrapper.vcxproj /p:Configuraton=$Env:CONFIGURATION
+
+      dotnet build .\src\EtherCAT.NET\EtherCAT.NET.csproj -c $Env:CONFIGURATION /p:Build=$Env:APPVEYOR_BUILD_NUMBER /p:IsFinalBuild=$Env:APPVEYOR_REPO_TAG /p:IsPublicBuild=True
+    }
+
+after_build:
+- ps: |
+    if ($isLinux) 
+    { 
+      Push-AppveyorArtifact "./artifacts/bin32/SOEM_wrapper/$env:FileName" -FileName "lib32"
+      Push-AppveyorArtifact "./artifacts/bin64/SOEM_wrapper/$env:FileName" -FileName "lib64"
+    }
+
+artifacts:
+  - path: ./artifacts/packages/**/*.nupkg
+
+deploy:
+  - provider: NuGet
+    server: https://www.nuget.org/api/v2/package
+    api_key:
+      secure: Z+/E7/8k05NePoUmHdtw/sTn6GSM+0e7ko6A02/rBjm6K9wVTYNekWHvSv7GEBtC
+    skip_symbols: true
+    artifact: /.*\.nupkg/ 
+    on:
+      branch: master
+      CI_WINDOWS: true

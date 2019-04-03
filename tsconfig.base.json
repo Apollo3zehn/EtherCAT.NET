@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "noImplicitAny": false,
+    "noEmitOnError": true,
+    "removeComments": false,
+    "target": "es2015",
+    "experimentalDecorators": true,
+    "module": "none",
+    "typeRoots": [
+      "./../OneDAS/OneDAS-Core/web/node_modules/@types/"
+    ]
+  },
+  "files": [
+    "./web/OneDas.Types.d.ts"
+  ],
+  "compileOnSave": true
+}

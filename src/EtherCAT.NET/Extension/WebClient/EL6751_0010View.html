@@ -1,0 +1,32 @@
+﻿<form>
+    <div class="form-group">
+        <label class="form-control-label" for="EL6731_0010_station_number">Station number:</label>
+        <input type="text"
+               class="form-control"
+               id="EL6731_0010_station_number"
+               placeholder="station number"
+               data-bind="textInput: StationNumber">
+    </div>
+    <div class="form-group">
+        <label class="form-control-label" for="EL6731_0010_available_modules">Available modules:</label>
+        <select class="form-control"
+                id="EL6731_0010_available_modules"
+                data-bind="options: EnumerationHelper.GetEnumValues('EL6731_0010ModuleEnum'),
+                           optionsText: function(x) { return EnumerationHelper.GetEnumLocalization('EL6731_0010ModuleEnum', x) },
+                           optionsCaption: 'select a module ...',
+                           value: SelectedModule">
+        </select>
+    </div>
+    <div class="form-group">
+        <label class="form-control-label" for="EL6731_0010_selected_modules">SelectedModules:</label>
+        <div class="list-group" id="EL6731_0010_selected_modules">
+            <!-- ko foreach: SelectedModuleSet -->
+            <a class="list-group-item list-group-item-action noselect"
+               role="button"
+               data-bind="text: EnumerationHelper.GetEnumLocalization('EL6731_0010ModuleEnum', $data),
+                          click: $parent.DeleteModule">
+            </a>
+            <!-- /ko -->
+        </div>
+    </div>
+</form>

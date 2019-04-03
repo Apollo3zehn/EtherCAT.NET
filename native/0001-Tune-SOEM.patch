@@ -1,0 +1,87 @@
+From f34ea9bc43c7b44c02cc76ad642ca3c54379dd8c Mon Sep 17 00:00:00 2001
+From: Apollo3zehn <vwilms@outlook.com>
+Date: Tue, 2 Apr 2019 10:53:09 +0200
+Subject: [PATCH] Tune SOEM.
+
+---
+ CMakeLists.txt      |  4 ++--
+ osal/win32/osal.c   | 20 +++++++++++++++++++-
+ soem/ethercattype.h |  2 +-
+ 3 files changed, 22 insertions(+), 4 deletions(-)
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index d74604b..cd7fd5a 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -9,7 +9,7 @@ endif()
+ 
+ set(SOEM_INCLUDE_INSTALL_DIR include/soem)
+ set(SOEM_LIB_INSTALL_DIR lib)
+-set(BUILD_TESTS TRUE)
++set(BUILD_TESTS FALSE)
+ 
+ if(WIN32)
+   set(OS "win32")
+@@ -24,7 +24,7 @@ if(WIN32)
+   set(OS_LIBS wpcap.lib Packet.lib Ws2_32.lib Winmm.lib)
+ elseif(UNIX)
+   set(OS "linux")
+-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -Werror")
++  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra")
+   set(OS_LIBS pthread rt)
+ elseif(${CMAKE_SYSTEM_NAME} MATCHES "rt-kernel")
+   set(OS "rtk")
+diff --git a/osal/win32/osal.c b/osal/win32/osal.c
+index 2e320f8..0473a0c 100644
+--- a/osal/win32/osal.c
++++ b/osal/win32/osal.c
+@@ -12,6 +12,24 @@ static double qpc2usec;
+ 
+ #define USECS_PER_SEC     1000000
+ 
++int osal_getabsolutetimeofday(struct timeval *tv, struct timezone *tz)
++{
++	FILETIME systemTime;
++	int64 systemTime64, usecs;
++	int64 offset = -134774LL * 86400LL * 1000LL * 1000LL * 10LL; // Difference between 1601 and 1970 in 100 ns.
++
++	GetSystemTimeAsFileTime(&systemTime);
++
++	systemTime64 = ((int64)(systemTime.dwHighDateTime) << 32) + (int64)systemTime.dwLowDateTime;
++	systemTime64 = systemTime64 + offset;
++	usecs = systemTime64 / 10;
++
++	tv->tv_sec = (long)(usecs / 1000000);
++	tv->tv_usec = (long)(usecs - (tv->tv_sec * 1000000));
++
++	return 1;
++}
++
+ int osal_gettimeofday (struct timeval *tv, struct timezone *tz)
+ {
+    int64_t wintime, usecs;
+@@ -34,7 +52,7 @@ ec_timet osal_current_time (void)
+    struct timeval current_time;
+    ec_timet return_value;
+ 
+-   osal_gettimeofday (&current_time, 0);
++   osal_getabsolutetimeofday(&current_time, 0);
+    return_value.sec = current_time.tv_sec;
+    return_value.usec = current_time.tv_usec;
+    return return_value;
+diff --git a/soem/ethercattype.h b/soem/ethercattype.h
+index 1881df3..0a680f0 100644
+--- a/soem/ethercattype.h
++++ b/soem/ethercattype.h
+@@ -28,7 +28,7 @@ extern "C"
+ 
+ /** define EC_VER1 if version 1 default context and functions are needed
+  * comment if application uses only ecx_ functions and own context */
+-#define EC_VER1
++//#define EC_VER1
+ 
+ #include "osal.h"
+ 
+-- 
+2.17.0.windows.1
+

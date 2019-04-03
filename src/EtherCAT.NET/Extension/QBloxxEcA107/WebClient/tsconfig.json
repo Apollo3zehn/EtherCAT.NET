@@ -1,0 +1,9 @@
+{
+  "extends": "./../../../../../tsconfig.slaveextension.json",
+  "compilerOptions": {
+    "outFile": "./../../WebClient/QBloxxEcA107.js"
+  },
+  "include": [
+    "./*.ts"
+  ]
+}

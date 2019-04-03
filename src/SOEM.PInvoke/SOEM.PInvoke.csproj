@@ -1,0 +1,56 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>A .NETStandard wrapper around the Simple Open Source EtherCAT Master (SOEM).</Description>
+    <PackageTags>SOEM EtherCAT PInvoke CSharp .NETStandard Windows Linux</PackageTags>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <TargetFramework>netstandard2.0</TargetFramework>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <IsWindows Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Windows)))' == 'True'">True</IsWindows>
+    <IsLinux Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Linux)))' == 'True'">True</IsLinux>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(PublicBuild)' == 'True'">
+    <Content Include="./../../artifacts/bin32/SOEM_wrapper/Release/soem_wrapper.dll" Link="runtimes/win-x86/native/soem_wrapper.dll">
+      <PackagePath>runtimes/win-x86/native</PackagePath>
+    </Content>
+    <Content Include="./../../artifacts/bin64/SOEM_wrapper/Release/soem_wrapper.dll" Link="runtimes/win-x64/native/soem_wrapper.dll">
+      <PackagePath>runtimes/win-x64/native</PackagePath>
+    </Content>
+    <Content Include="./../../artifacts/download/bin32/libsoem_wrapper.so" Link="runtimes/linux-x86/native/libsoem_wrapper.so">
+      <PackagePath>runtimes/linux-x86/native</PackagePath>
+    </Content>
+    <Content Include="./../../artifacts/download/bin64/libsoem_wrapper.so" Link="runtimes/linux-x64/native/libsoem_wrapper.so">
+      <PackagePath>runtimes/linux-x64/native</PackagePath>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(PublicBuild)' == '' AND $(IsWindows) == 'True'">
+    <Content Include="./../../artifacts/bin32/SOEM_wrapper/Release/soem_wrapper.dll" Link="runtimes/win-x86/native/soem_wrapper.dll">
+      <PackagePath>runtimes/win-x86/native</PackagePath>
+    </Content>
+    <Content Include="./../../artifacts/bin64/SOEM_wrapper/Release/soem_wrapper.dll" Link="runtimes/win-x64/native/soem_wrapper.dll">
+      <PackagePath>runtimes/win-x64/native</PackagePath>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(PublicBuild)' == '' AND $(IsLinux) == 'True'">
+    <Content Include="./../../artifacts/bin32/SOEM_wrapper/libsoem_wrapper.so" Link="runtimes/linux-x86/native/libsoem_wrapper.so">
+      <PackagePath>runtimes/linux-x86/native</PackagePath>
+    </Content>
+    <Content Include="./../../artifacts/bin64/SOEM_wrapper/libsoem_wrapper.so" Link="runtimes/linux-x64/native/libsoem_wrapper.so">
+      <PackagePath>runtimes/linux-x64/native</PackagePath>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Types\" />
+  </ItemGroup>
+
+</Project>
