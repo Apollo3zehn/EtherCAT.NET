@@ -63,6 +63,12 @@ namespace EtherCAT
                 case EthercatDataType.Integer32:
                     return OneDasDataType.INT32;
 
+                case EthercatDataType.Unsigned64:
+                    return OneDasDataType.UINT64;
+
+                case EthercatDataType.Integer64:
+                    return OneDasDataType.INT64;
+
                 case EthercatDataType.Float32:
                     return OneDasDataType.FLOAT32;
 
