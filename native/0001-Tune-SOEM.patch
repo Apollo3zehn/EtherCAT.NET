@@ -1,16 +1,16 @@
-From f34ea9bc43c7b44c02cc76ad642ca3c54379dd8c Mon Sep 17 00:00:00 2001
+From bfd2b54a767584d2c1ce34ab5389d659678fb9ce Mon Sep 17 00:00:00 2001
 From: Apollo3zehn <vwilms@outlook.com>
-Date: Tue, 2 Apr 2019 10:53:09 +0200
+Date: Sat, 13 Apr 2019 19:27:26 +0200
 Subject: [PATCH] Tune SOEM.
 
 ---
- CMakeLists.txt      |  4 ++--
+ CMakeLists.txt      |  2 +-
  osal/win32/osal.c   | 20 +++++++++++++++++++-
  soem/ethercattype.h |  2 +-
- 3 files changed, 22 insertions(+), 4 deletions(-)
+ 3 files changed, 21 insertions(+), 3 deletions(-)
 
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index d74604b..cd7fd5a 100644
+index d74604b..7474b5d 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
 @@ -9,7 +9,7 @@ endif()
@@ -22,15 +22,6 @@ index d74604b..cd7fd5a 100644
  
  if(WIN32)
    set(OS "win32")
-@@ -24,7 +24,7 @@ if(WIN32)
-   set(OS_LIBS wpcap.lib Packet.lib Ws2_32.lib Winmm.lib)
- elseif(UNIX)
-   set(OS "linux")
--  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -Werror")
-+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra")
-   set(OS_LIBS pthread rt)
- elseif(${CMAKE_SYSTEM_NAME} MATCHES "rt-kernel")
-   set(OS "rtk")
 diff --git a/osal/win32/osal.c b/osal/win32/osal.c
 index 2e320f8..0473a0c 100644
 --- a/osal/win32/osal.c
@@ -83,5 +74,5 @@ index 1881df3..0a680f0 100644
  #include "osal.h"
  
 -- 
-2.17.0.windows.1
+2.19.2.windows.1
 
