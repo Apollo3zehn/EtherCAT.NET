@@ -4,7 +4,7 @@
 
 ### Prerequisites
 
-* Visual Studio 2017 Community
+* Visual Studio 2019
 * CMake (for EtherCAT solution)
   * CMake (https://cmake.org/download/)
 
