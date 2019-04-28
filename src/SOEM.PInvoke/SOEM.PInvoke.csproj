@@ -15,33 +15,41 @@
   <ItemGroup Condition="'$(IsPublicBuild)' == 'True'">
     <Content Include="./../../artifacts/bin32/SOEM_wrapper/Release/soem_wrapper.dll" Link="runtimes/win-x86/native/soem_wrapper.dll">
       <PackagePath>runtimes/win-x86/native</PackagePath>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="./../../artifacts/bin64/SOEM_wrapper/Release/soem_wrapper.dll" Link="runtimes/win-x64/native/soem_wrapper.dll">
       <PackagePath>runtimes/win-x64/native</PackagePath>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="./../../artifacts/download/bin32/libsoem_wrapper.so" Link="runtimes/linux-x86/native/libsoem_wrapper.so">
       <PackagePath>runtimes/linux-x86/native</PackagePath>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="./../../artifacts/download/bin64/libsoem_wrapper.so" Link="runtimes/linux-x64/native/libsoem_wrapper.so">
       <PackagePath>runtimes/linux-x64/native</PackagePath>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
 
   <ItemGroup Condition="'$(IsPublicBuild)' == '' AND $(IsWindows) == 'True'">
     <Content Include="./../../artifacts/bin32/SOEM_wrapper/Release/soem_wrapper.dll" Link="runtimes/win-x86/native/soem_wrapper.dll">
       <PackagePath>runtimes/win-x86/native</PackagePath>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="./../../artifacts/bin64/SOEM_wrapper/Release/soem_wrapper.dll" Link="runtimes/win-x64/native/soem_wrapper.dll">
       <PackagePath>runtimes/win-x64/native</PackagePath>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
 
   <ItemGroup Condition="'$(IsPublicBuild)' == '' AND $(IsLinux) == 'True'">
     <Content Include="./../../artifacts/bin32/SOEM_wrapper/libsoem_wrapper.so" Link="runtimes/linux-x86/native/libsoem_wrapper.so">
       <PackagePath>runtimes/linux-x86/native</PackagePath>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="./../../artifacts/bin64/SOEM_wrapper/libsoem_wrapper.so" Link="runtimes/linux-x64/native/libsoem_wrapper.so">
       <PackagePath>runtimes/linux-x64/native</PackagePath>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
 

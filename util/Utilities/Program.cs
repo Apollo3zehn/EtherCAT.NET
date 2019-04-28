@@ -1,4 +1,5 @@
-﻿using System;
+﻿using EtherCAT;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -88,7 +89,7 @@ namespace Utilities
                     slaveNameSet.Add("EL9410");
                     slaveNameSet.Add("EL9505");
 
-                    fileNameSet = EthercatUtilities.EnumerateFiles(@"C:\TwinCAT\3.1\Config\Io\EtherCAT", "(.*Beckhoff E[K|L].*\\.xml)", SearchOption.TopDirectoryOnly).ToList();
+                    fileNameSet = EsiUtilities.EnumerateFiles(@"C:\TwinCAT\3.1\Config\Io\EtherCAT", "(.*Beckhoff E[K|L].*\\.xml)", SearchOption.TopDirectoryOnly).ToList();
                     targetfileName = "Beckhoff Automation.xml";
 
                     break;
@@ -99,7 +100,7 @@ namespace Utilities
                     slaveNameSet.Add("Q.bloxx-EC BC");
                     slaveNameSet.Add("Q.station 101");
 
-                    fileNameSet = EthercatUtilities.EnumerateFiles(@".\ESI\Gantner", ".*", SearchOption.AllDirectories).ToList();
+                    fileNameSet = EsiUtilities.EnumerateFiles(@".\ESI\Gantner", ".*", SearchOption.AllDirectories).ToList();
                     targetfileName = "Gantner Instruments.xml";
 
                     break;
@@ -108,7 +109,7 @@ namespace Utilities
 
                     slaveNameSet.Add("Anybus X-gateway - Slave");
 
-                    fileNameSet = EthercatUtilities.EnumerateFiles(@".\ESI\Anybus", ".*", SearchOption.AllDirectories).ToList();
+                    fileNameSet = EsiUtilities.EnumerateFiles(@".\ESI\Anybus", ".*", SearchOption.AllDirectories).ToList();
                     targetfileName = "Anybus.xml";
 
                     break;

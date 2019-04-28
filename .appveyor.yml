@@ -27,7 +27,7 @@ install:
     if ($isLinux) 
     { 
       sudo apt-get update
-      sudo apt-get --yes install g++-multilib 
+      sudo apt-get --yes install g++-multilib
     }
 
 before_build:
@@ -71,6 +71,9 @@ after_build:
       Push-AppveyorArtifact "./artifacts/bin32/SOEM_wrapper/$env:FileName" -FileName "lib32"
       Push-AppveyorArtifact "./artifacts/bin64/SOEM_wrapper/$env:FileName" -FileName "lib64"
     }
+
+test_script:
+- ps: dotnet test ./tests/EtherCAT.NET.Tests -c $Env:CONFIGURATION /p:BuildProjectReferences=false
 
 artifacts:
   - path: ./artifacts/packages/**/*.nupkg

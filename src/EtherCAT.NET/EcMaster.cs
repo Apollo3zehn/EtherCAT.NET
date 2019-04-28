@@ -9,8 +9,8 @@ using System.Threading.Tasks;
 using EtherCAT.Extensibility;
 using EtherCAT.Extension;
 using EtherCAT.Infrastructure;
-using EtherCAT.NET.Extensibility;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using OneDas.Extensibility;
 using OneDas.Infrastructure;
 using SOEM.PInvoke;
@@ -25,6 +25,7 @@ namespace EtherCAT
         IExtensionFactory _extensionFactory;
         private ILogger _logger;
         private EcSettings _ecSettings;
+        private SlaveInfo _rootSlaveInfo;
 
         // data
         private IntPtr _ioMapPtr;
@@ -32,8 +33,6 @@ namespace EtherCAT
 
         // conversion
         private const long _dateTime_To_Ns = 100L;
-        private const long _S_To_DateTime = 10000000L;
-        private long _baseFrequency_To_Ns;
 
         // DC
         private const int _dcRingBufferSize = 100;
@@ -62,31 +61,19 @@ namespace EtherCAT
 
         #region Constructors
 
-        public EcMaster(EcSettings ecSettings, IExtensionFactory extensionFactory, ILogger logger)
+        public EcMaster(SlaveInfo rootSlaveInfo, EcSettings ecSettings, IExtensionFactory extensionFactory, ILogger logger)
         {
-            List<SlaveInfo> slaveInfoSet;
-
+            _rootSlaveInfo = rootSlaveInfo;
             _ecSettings = ecSettings.ShallowCopy();
-            _logger = logger;
+            _logger = logger != null ? logger : NullLogger.Instance;
             _extensionFactory = extensionFactory;
 
             this.Context = EcHL.CreateContext();
 
-            // ESI
-            slaveInfoSet = _ecSettings.RootSlaveInfo != null ? _ecSettings.RootSlaveInfo.Descendants().ToList() : new List<SlaveInfo>();
-
-            slaveInfoSet.ForEach(slaveInfo =>
-            {
-                ExtensibilityHelper.CreateDynamicData(extensionFactory, slaveInfo);
-            });
-
-            // conversion
-            _baseFrequency_To_Ns = Convert.ToInt64(1000000000L / _ecSettings.NativeSampleRate);
-
             // DC
             _dcRingBuffer = new long[_dcRingBufferSize];
             _dcEpoch = new DateTime(2000, 1, 1);
-            _dcDriftCompensationRate = Convert.ToInt32(_ecSettings.DriftCompensationRate / _ecSettings.NativeSampleRate); // 850 ppm max clock drift
+            _dcDriftCompensationRate = Convert.ToInt32(_ecSettings.DriftCompensationRate / _ecSettings.CycleFrequency); // 850 ppm max clock drift
 
             // data
             _ioMapPtr = Marshal.AllocHGlobal(_ecSettings.IoMapLength);
@@ -251,7 +238,7 @@ namespace EtherCAT
                     if (!slaveInfo.SlaveEsi.Dc.TimeLoopControlOnly)
                     {
                         assignActivate = null;
-                        parameters = distributedClocksSettings.CalculateDcParameters(ref assignActivate);
+                        parameters = distributedClocksSettings.CalculateDcParameters(ref assignActivate, _ecSettings.CycleFrequency);
                         EcUtilities.CheckErrorCode(this.Context, EcHL.ConfigureSync01(this.Context, slaveIndex, ref assignActivate, assignActivate.Count(), parameters.CycleTime0, parameters.CycleTime1, parameters.ShiftTime0));
                     }
                 }
@@ -270,7 +257,7 @@ namespace EtherCAT
 
             #region "PreOp"
 
-            slaveInfoSet = _ecSettings.RootSlaveInfo != null ? _ecSettings.RootSlaveInfo.Descendants().ToList() : new List<SlaveInfo>();
+            slaveInfoSet = _rootSlaveInfo.Descendants().ToList();
             actualSlaveInfoSet = EcUtilities.ScanDevices(this.Context, _ecSettings.NicHardwareAddress, null).Descendants().ToList();
 
             this.ValidateSlaves(slaveInfoSet, actualSlaveInfoSet);
@@ -308,7 +295,7 @@ namespace EtherCAT
                     return;
                 }
 
-                _counter = (int)((_counter + 1) % _ecSettings.NativeSampleRate);
+                _counter = (int)((_counter + 1) % _ecSettings.CycleFrequency);
                 _actualWorkingCounter = EcHL.UpdateIo(this.Context, out _dcTime);
 
                 #region "Diagnostics"
@@ -316,15 +303,15 @@ namespace EtherCAT
                 // statistics
                 if (_counter == 0)
                 {
-                    Trace.WriteLine($"lost frames: {(double)_lostFrameCounter / _ecSettings.NativeSampleRate:P2} / wkc mismatch: {(double)_wkcMismatchCounter / _ecSettings.NativeSampleRate:P2}");
+                    Trace.WriteLine($"lost frames: {(double)_lostFrameCounter / _ecSettings.CycleFrequency:P2} / wkc mismatch: {(double)_wkcMismatchCounter / _ecSettings.CycleFrequency:P2}");
 
-                    if (_lostFrameCounter == _ecSettings.NativeSampleRate)
+                    if (_lostFrameCounter == _ecSettings.CycleFrequency)
                     {
-                        _logger.LogWarning($"frame loss occured ({ _ecSettings.NativeSampleRate } frames)");
+                        _logger.LogWarning($"frame loss occured ({ _ecSettings.CycleFrequency } frames)");
                         _lostFrameCounter = 0;
                     }
 
-                    if (_wkcMismatchCounter == _ecSettings.NativeSampleRate)
+                    if (_wkcMismatchCounter == _ecSettings.CycleFrequency)
                     {
                         _logger.LogWarning($"working counter mismatch { _actualWorkingCounter }/{ _expectedWorkingCounter }");
                         //Trace.WriteLine(EcUtilities.GetSlaveStateDescription(_ecSettings.RootSlaveInfoSet.SelectMany(x => x.Descendants()).ToList()));

@@ -8,7 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="OneDas.Extensibility" Version="1.0.0-alpha.2.168" />
+    <PackageReference Include="OneDas.Types" Version="1.0.0-alpha.2.171" />
   </ItemGroup>
 
   <ItemGroup>

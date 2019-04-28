@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 15
-VisualStudioVersion = 15.0.27130.2024
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.28803.202
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{8449A872-2591-4C77-A810-974A20DD0227}"
 EndProject
@@ -35,6 +35,14 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "build", "build", "{15DEDCE6
 		build\Start-ArtifactDownload.ps1 = build\Start-ArtifactDownload.ps1
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{2B4BA2BB-B561-4301-A1B9-9E59E58BE8EF}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EtherCAT.NET.Tests", "tests\EtherCAT.NET.Tests\EtherCAT.NET.Tests.csproj", "{8497841B-924D-44A8-9351-9F5C79B3A225}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "sample", "sample", "{D6452DF6-D009-4A4D-A161-E25DE443C0D8}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SampleMaster", "sample\SampleMaster\SampleMaster.csproj", "{08785DF9-C116-46DD-B0D3-3A6F2C803320}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -67,6 +75,22 @@ Global
 		{CDD561BF-DB10-487D-8338-B0B9402FD43E}.Release|Any CPU.Build.0 = Release|Any CPU
 		{CDD561BF-DB10-487D-8338-B0B9402FD43E}.Release|x86.ActiveCfg = Release|Any CPU
 		{CDD561BF-DB10-487D-8338-B0B9402FD43E}.Release|x86.Build.0 = Release|Any CPU
+		{8497841B-924D-44A8-9351-9F5C79B3A225}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8497841B-924D-44A8-9351-9F5C79B3A225}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8497841B-924D-44A8-9351-9F5C79B3A225}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{8497841B-924D-44A8-9351-9F5C79B3A225}.Debug|x86.Build.0 = Debug|Any CPU
+		{8497841B-924D-44A8-9351-9F5C79B3A225}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8497841B-924D-44A8-9351-9F5C79B3A225}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8497841B-924D-44A8-9351-9F5C79B3A225}.Release|x86.ActiveCfg = Release|Any CPU
+		{8497841B-924D-44A8-9351-9F5C79B3A225}.Release|x86.Build.0 = Release|Any CPU
+		{08785DF9-C116-46DD-B0D3-3A6F2C803320}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{08785DF9-C116-46DD-B0D3-3A6F2C803320}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{08785DF9-C116-46DD-B0D3-3A6F2C803320}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{08785DF9-C116-46DD-B0D3-3A6F2C803320}.Debug|x86.Build.0 = Debug|Any CPU
+		{08785DF9-C116-46DD-B0D3-3A6F2C803320}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{08785DF9-C116-46DD-B0D3-3A6F2C803320}.Release|Any CPU.Build.0 = Release|Any CPU
+		{08785DF9-C116-46DD-B0D3-3A6F2C803320}.Release|x86.ActiveCfg = Release|Any CPU
+		{08785DF9-C116-46DD-B0D3-3A6F2C803320}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -76,6 +100,8 @@ Global
 		{6C7BBE1A-38AA-41E2-A88B-A6BF3282DC26} = {8449A872-2591-4C77-A810-974A20DD0227}
 		{CDD561BF-DB10-487D-8338-B0B9402FD43E} = {8449A872-2591-4C77-A810-974A20DD0227}
 		{15DEDCE6-3981-4AF5-8F1C-0DA8A070F91F} = {D422FCDF-E2F9-4FCC-8BAA-81237E70455D}
+		{8497841B-924D-44A8-9351-9F5C79B3A225} = {2B4BA2BB-B561-4301-A1B9-9E59E58BE8EF}
+		{08785DF9-C116-46DD-B0D3-3A6F2C803320} = {D6452DF6-D009-4A4D-A161-E25DE443C0D8}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {F998BD6D-3E2B-4AA0-A7A4-FD84100C45A4}
