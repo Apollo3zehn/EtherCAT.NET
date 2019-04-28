@@ -14,6 +14,7 @@ environment:
 branches:
   only:
   - master
+  - dev
 
 configuration:
   - Release
