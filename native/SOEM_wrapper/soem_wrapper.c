@@ -654,8 +654,13 @@ int CALLCONV UpdateIo(ecx_contextt* context, int64* dcTime)
 {
 	int wkc;
 
-	ecx_send_processdata(context);
-	wkc = ecx_receive_processdata(context, EC_TIMEOUTRET);
+	wkc = 0;
+
+	if (ecx_send_processdata(context))
+	{
+		wkc = ecx_receive_processdata(context, EC_TIMEOUTRET);
+	}
+	
 	*dcTime = *context->DCtime;
 
 	return wkc;

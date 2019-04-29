@@ -127,7 +127,7 @@ namespace EtherCAT
 
                 // SDO / PDO config / PDO assign
                 currentSlaveIndex = (ushort)(Convert.ToUInt16(slaveInfoSet.ToList().IndexOf(slaveInfo)) + 1);
-                extensionSet = slaveInfo.SlaveExtensionSet.Select(slaveExtension => _extensionFactory.BuildLogic<SlaveExtensionLogic>(slaveExtension));
+                extensionSet = slaveInfo.SlaveExtensionSet.Select(slaveExtension => _extensionFactory.BuildLogic<SlaveExtensionLogic>(slaveExtension)).ToList();
 
                 sdoWriteRequestSet = slaveInfo.GetConfiguration(extensionSet).ToList();
 

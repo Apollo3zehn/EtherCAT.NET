@@ -78,13 +78,9 @@ namespace EtherCAT
             EtherCATInfoDescriptionsDevice slaveEsi = etherCatInfo?.Descriptions.Devices.Where(y =>
             {
                 if (!string.IsNullOrWhiteSpace(y.Type.ProductCode) && !string.IsNullOrWhiteSpace(y.Type.RevisionNo))
-                {
                     return Int32.Parse(y.Type.ProductCode.Substring(2), NumberStyles.HexNumber) == productCode && Int32.Parse(y.Type.RevisionNo.Substring(2), NumberStyles.HexNumber) == revision;
-                }
                 else
-                {
                     return false;
-                }
             }).FirstOrDefault();
 
             // try to find older revision
