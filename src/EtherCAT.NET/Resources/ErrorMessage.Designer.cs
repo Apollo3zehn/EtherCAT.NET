@@ -19,7 +19,7 @@ namespace EtherCAT {
     // -Klasse über ein Tool wie ResGen oder Visual Studio automatisch generiert.
     // Um einen Member hinzuzufügen oder zu entfernen, bearbeiten Sie die .ResX-Datei und führen dann ResGen
     // mit der /str-Option erneut aus, oder Sie erstellen Ihr VS-Projekt neu.
-    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Resources.Tools.StronglyTypedResourceBuilder", "15.0.0.0")]
+    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Resources.Tools.StronglyTypedResourceBuilder", "16.0.0.0")]
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
     internal class ErrorMessage {
@@ -146,7 +146,7 @@ namespace EtherCAT {
         }
         
         /// <summary>
-        ///   Sucht eine lokalisierte Zeichenfolge, die Could not detect slaves. Possible cause is a running TwinCAT instance which blocks the NIC. ähnelt.
+        ///   Sucht eine lokalisierte Zeichenfolge, die Could not detect any slaves. Possible cause is a running TwinCAT instance which blocks the NIC. ähnelt.
         /// </summary>
         internal static string Native_0x0103 {
             get {

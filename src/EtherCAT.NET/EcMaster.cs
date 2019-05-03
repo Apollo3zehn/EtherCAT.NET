@@ -11,6 +11,7 @@ using EtherCAT.Extension;
 using EtherCAT.Infrastructure;
 using EtherCAT.NET.Extensibility;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using OneDas.Extensibility;
 using OneDas.Infrastructure;
 using SOEM.PInvoke;
@@ -24,7 +25,7 @@ namespace EtherCAT
         // general
         IExtensionFactory _extensionFactory;
         private ILogger _logger;
-        private EcSettings _ecSettings;
+        private EcSettings _settings;
 
         // data
         private IntPtr _ioMapPtr;
@@ -32,8 +33,6 @@ namespace EtherCAT
 
         // conversion
         private const long _dateTime_To_Ns = 100L;
-        private const long _S_To_DateTime = 10000000L;
-        private long _baseFrequency_To_Ns;
 
         // DC
         private const int _dcRingBufferSize = 100;
@@ -62,34 +61,26 @@ namespace EtherCAT
 
         #region Constructors
 
-        public EcMaster(EcSettings ecSettings, IExtensionFactory extensionFactory, ILogger logger)
+        public EcMaster(EcSettings settings, IExtensionFactory extensionFactory, ILogger logger)
         {
-            List<SlaveInfo> slaveInfoSet;
-
-            _ecSettings = ecSettings.ShallowCopy();
-            _logger = logger;
+            _settings = settings.ShallowCopy();
+            _logger = logger != null ? logger : NullLogger.Instance;
             _extensionFactory = extensionFactory;
 
             this.Context = EcHL.CreateContext();
 
-            // ESI
-            slaveInfoSet = _ecSettings.RootSlaveInfo != null ? _ecSettings.RootSlaveInfo.Descendants().ToList() : new List<SlaveInfo>();
-
-            slaveInfoSet.ForEach(slaveInfo =>
-            {
-                ExtensibilityHelper.CreateDynamicData(extensionFactory, slaveInfo);
-            });
-
-            // conversion
-            _baseFrequency_To_Ns = Convert.ToInt64(1000000000L / _ecSettings.NativeSampleRate);
-
             // DC
             _dcRingBuffer = new long[_dcRingBufferSize];
             _dcEpoch = new DateTime(2000, 1, 1);
-            _dcDriftCompensationRate = Convert.ToInt32(_ecSettings.DriftCompensationRate / _ecSettings.NativeSampleRate); // 850 ppm max clock drift
+            _dcDriftCompensationRate = Convert.ToInt32(_settings.DriftCompensationRate / _settings.CycleFrequency); // 850 ppm max clock drift
 
             // data
-            _ioMapPtr = Marshal.AllocHGlobal(_ecSettings.IoMapLength);
+            _ioMapPtr = Marshal.AllocHGlobal(_settings.IoMapLength);
+
+            unsafe
+            {
+                new Span<byte>(_ioMapPtr.ToPointer(), _settings.IoMapLength).Clear();
+            }
 
             // diagnostics
             _isReconfiguring = false;
@@ -140,7 +131,7 @@ namespace EtherCAT
 
                 // SDO / PDO config / PDO assign
                 currentSlaveIndex = (ushort)(Convert.ToUInt16(slaveInfoSet.ToList().IndexOf(slaveInfo)) + 1);
-                extensionSet = slaveInfo.SlaveExtensionSet.Select(slaveExtension => _extensionFactory.BuildLogic<SlaveExtensionLogic>(slaveExtension));
+                extensionSet = slaveInfo.SlaveExtensionSet.Select(slaveExtension => _extensionFactory.BuildLogic<SlaveExtensionLogic>(slaveExtension)).ToList();
 
                 sdoWriteRequestSet = slaveInfo.GetConfiguration(extensionSet).ToList();
 
@@ -221,13 +212,13 @@ namespace EtherCAT
                 }
             }
 
-            _logger.LogInformation($"IO map configured ({ _actualIoMapSize } bytes)");
+            _logger.LogInformation($"IO map configured ({slaveInfoSet.Count()} {(slaveInfoSet.Count() > 1 ? "slaves" : "slave")}, {_actualIoMapSize} bytes)");
         }
 
         private void ConfigureDc()
         {
             uint systemTimeDifference;
-            EcUtilities.CheckErrorCode(this.Context, EcHL.ConfigureDc(this.Context, _ecSettings.FrameCount, _ecSettings.TargetTimeDifference, out systemTimeDifference), nameof(EcHL.ConfigureDc));
+            EcUtilities.CheckErrorCode(this.Context, EcHL.ConfigureDc(this.Context, _settings.FrameCount, _settings.TargetTimeDifference, out systemTimeDifference), nameof(EcHL.ConfigureDc));
 
             _logger.LogInformation($"DC system time diff. is <= { systemTimeDifference & 0x7FFF } ns");
         }
@@ -251,27 +242,40 @@ namespace EtherCAT
                     if (!slaveInfo.SlaveEsi.Dc.TimeLoopControlOnly)
                     {
                         assignActivate = null;
-                        parameters = distributedClocksSettings.CalculateDcParameters(ref assignActivate);
+                        parameters = distributedClocksSettings.CalculateDcParameters(ref assignActivate, _settings.CycleFrequency);
                         EcUtilities.CheckErrorCode(this.Context, EcHL.ConfigureSync01(this.Context, slaveIndex, ref assignActivate, assignActivate.Count(), parameters.CycleTime0, parameters.CycleTime1, parameters.ShiftTime0));
                     }
                 }
             }
         }
 
-        public void Configure()
+        public void Configure(SlaveInfo rootSlaveInfo = null)
         {
+            SlaveInfo actualSlaveInfo;
             IList<SlaveInfo> slaveInfoSet;
             IList<SlaveInfo> actualSlaveInfoSet;
 
-            if (NetworkInterface.GetAllNetworkInterfaces().Where(x => x.GetPhysicalAddress().ToString() == _ecSettings.NicHardwareAddress).FirstOrDefault()?.OperationalStatus != OperationalStatus.Up)
+            if (NetworkInterface.GetAllNetworkInterfaces().Where(x => x.GetPhysicalAddress().ToString() == _settings.NicHardwareAddress).FirstOrDefault()?.OperationalStatus != OperationalStatus.Up)
             {
-                throw new Exception($"The targeted network interface with physical address { _ecSettings.NicHardwareAddress } is not linked. Aborting action.");
+                throw new Exception($"The targeted network interface with physical address { _settings.NicHardwareAddress } is not linked. Aborting action.");
             }
 
             #region "PreOp"
 
-            slaveInfoSet = _ecSettings.RootSlaveInfo != null ? _ecSettings.RootSlaveInfo.Descendants().ToList() : new List<SlaveInfo>();
-            actualSlaveInfoSet = EcUtilities.ScanDevices(this.Context, _ecSettings.NicHardwareAddress, null).Descendants().ToList();
+            actualSlaveInfo = EcUtilities.ScanDevices(this.Context, _settings.NicHardwareAddress, null);
+
+            if (rootSlaveInfo == null)
+            {
+                rootSlaveInfo = actualSlaveInfo;
+
+                rootSlaveInfo.Descendants().ToList().ForEach(current =>
+                {
+                    ExtensibilityHelper.CreateDynamicData(_settings.EsiDirectoryPath, _extensionFactory, current);
+                });
+            }
+
+            slaveInfoSet = rootSlaveInfo.Descendants().ToList();
+            actualSlaveInfoSet = actualSlaveInfo.Descendants().ToList();
 
             this.ValidateSlaves(slaveInfoSet, actualSlaveInfoSet);
             this.ConfigureSlaves(slaveInfoSet);
@@ -299,7 +303,7 @@ namespace EtherCAT
             }
         }
 
-        public void UpdateIo(DateTime referenceDateTime)
+        public void UpdateIO(DateTime referenceDateTime)
         {
             lock (_lock)
             {
@@ -308,7 +312,7 @@ namespace EtherCAT
                     return;
                 }
 
-                _counter = (int)((_counter + 1) % _ecSettings.NativeSampleRate);
+                _counter = (int)((_counter + 1) % _settings.CycleFrequency);
                 _actualWorkingCounter = EcHL.UpdateIo(this.Context, out _dcTime);
 
                 #region "Diagnostics"
@@ -316,15 +320,15 @@ namespace EtherCAT
                 // statistics
                 if (_counter == 0)
                 {
-                    Trace.WriteLine($"lost frames: {(double)_lostFrameCounter / _ecSettings.NativeSampleRate:P2} / wkc mismatch: {(double)_wkcMismatchCounter / _ecSettings.NativeSampleRate:P2}");
+                    Trace.WriteLine($"lost frames: {(double)_lostFrameCounter / _settings.CycleFrequency:P2} / wkc mismatch: {(double)_wkcMismatchCounter / _settings.CycleFrequency:P2}");
 
-                    if (_lostFrameCounter == _ecSettings.NativeSampleRate)
+                    if (_lostFrameCounter == _settings.CycleFrequency)
                     {
-                        _logger.LogWarning($"frame loss occured ({ _ecSettings.NativeSampleRate } frames)");
+                        _logger.LogWarning($"frame loss occured ({ _settings.CycleFrequency } frames)");
                         _lostFrameCounter = 0;
                     }
 
-                    if (_wkcMismatchCounter == _ecSettings.NativeSampleRate)
+                    if (_wkcMismatchCounter == _settings.CycleFrequency)
                     {
                         _logger.LogWarning($"working counter mismatch { _actualWorkingCounter }/{ _expectedWorkingCounter }");
                         //Trace.WriteLine(EcUtilities.GetSlaveStateDescription(_ecSettings.RootSlaveInfoSet.SelectMany(x => x.Descendants()).ToList()));
@@ -400,7 +404,7 @@ namespace EtherCAT
                 {
                     _statusCheckFailedCounter++;
 
-                    if (_statusCheckFailedCounter >= _ecSettings.MaxRetries)
+                    if (_statusCheckFailedCounter >= _settings.MaxRetries)
                     {
                         try
                         {
@@ -436,7 +440,7 @@ namespace EtherCAT
                     _statusCheckFailedCounter = 0;
                 }
 
-                _cts.Token.WaitHandle.WaitOne(TimeSpan.FromSeconds(_ecSettings.WatchdogSleepTime));
+                _cts.Token.WaitHandle.WaitOne(TimeSpan.FromSeconds(_settings.WatchdogSleepTime));
             }
         }
 

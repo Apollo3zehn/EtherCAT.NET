@@ -1,6 +1,5 @@
 ﻿using EtherCAT.Extensibility;
 using EtherCAT.Infrastructure;
-using OneDas;
 using OneDas.Extensibility;
 using System;
 using System.Collections.Generic;
@@ -12,7 +11,7 @@ namespace EtherCAT.Extension
 {
     [DataContract]
     [ExtensionContext(typeof(DistributedClocksExtension))]
-    [ExtensionSupporter(typeof(DistributedClocksSupporter))]
+    //[ExtensionSupporter(typeof(DistributedClocksSupporter))]
     [ExtensionIdentification("Ethercat_DC", "Distributed Clocks", "Enable usage of distributed clocks.", @"EthercatSlaveExtension.DistributedClocks.WebClient.DistributedClocksView.html", @"EthercatSlaveExtension.DistributedClocks.WebClient.DistributedClocks.js")]
     public class DistributedClocksSettings : SlaveExtensionSettingsBase
     {
@@ -66,7 +65,7 @@ namespace EtherCAT.Extension
             }
         }
 
-        public DistributedClocksParameters CalculateDcParameters(ref byte[] assignActivate)
+        public DistributedClocksParameters CalculateDcParameters(ref byte[] assignActivate, uint cycleFrequency)
         {
             DeviceTypeDCOpMode dcOpMode;
 
@@ -98,7 +97,7 @@ namespace EtherCAT.Extension
                     };
                 }
 
-                int cycleTimeSyncUnit = Convert.ToInt32(Math.Pow(10, 9) / OneDasConstants.NativeSampleRate);
+                int cycleTimeSyncUnit = Convert.ToInt32(Math.Pow(10, 9) / cycleFrequency);
 
                 cycleTime0 = Convert.ToUInt32(dcOpMode.CycleTimeSync0?.Value);
 

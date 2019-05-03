@@ -420,7 +420,7 @@ int CALLCONV ConfigureDc(ecx_contextt* context, uint32 frameCount, uint32 target
 		}
 
 		// compensate static drift. Works up to 100 us initial offset. frameCount cycles are necessary to settle control loop.
-		for (int counter = 1; counter <= frameCount; counter++)
+		for (uint32 counter = 1; counter <= frameCount; counter++)
 		{
 			ecx_FRMW(context->port, context->slavelist[_referenceSlave].configadr, ECT_REG_DCSYSTIME, sizeof(referenceClockTime), &referenceClockTime, EC_TIMEOUTRET);
 		}
@@ -654,8 +654,13 @@ int CALLCONV UpdateIo(ecx_contextt* context, int64* dcTime)
 {
 	int wkc;
 
-	ecx_send_processdata(context);
-	wkc = ecx_receive_processdata(context, EC_TIMEOUTRET);
+	wkc = 0;
+
+	if (ecx_send_processdata(context))
+	{
+		wkc = ecx_receive_processdata(context, EC_TIMEOUTRET);
+	}
+	
 	*dcTime = *context->DCtime;
 
 	return wkc;

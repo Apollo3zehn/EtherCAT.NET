@@ -27,7 +27,7 @@ install:
     if ($isLinux) 
     { 
       sudo apt-get update
-      sudo apt-get --yes install g++-multilib 
+      sudo apt-get --yes install g++-multilib
     }
 
 before_build:
@@ -48,20 +48,17 @@ build_script:
 - ps: |
     if ($isLinux) 
     { 
-      Set-Location -Path "./artifacts/bin32"
-      make
-      Set-Location -Path "./../bin64"
-      make
-      Set-Location -Path "./../../"
+      make --directory "./artifacts/bin32"
+      make --directory "./artifacts/bin64"
 
-      dotnet build .\src\EtherCAT.NET\EtherCAT.NET.csproj -c $Env:CONFIGURATION /p:Build=$Env:APPVEYOR_BUILD_NUMBER /p:IsFinalBuild=$Env:APPVEYOR_REPO_TAG
+      dotnet build ./src/EtherCAT.NET/EtherCAT.NET.csproj -c $Env:CONFIGURATION /p:Build=$Env:APPVEYOR_BUILD_NUMBER /p:IsFinalBuild=$Env:APPVEYOR_REPO_TAG
     }
     elseif ($isWindows)
     { 
-      msbuild .\artifacts\bin32\SOEM_wrapper\soem_wrapper.vcxproj /p:Configuraton=$Env:CONFIGURATION
-      msbuild .\artifacts\bin64\SOEM_wrapper\soem_wrapper.vcxproj /p:Configuraton=$Env:CONFIGURATION
+      msbuild ./artifacts/bin32/SOEM_wrapper/soem_wrapper.vcxproj /p:Configuraton=$Env:CONFIGURATION
+      msbuild ./artifacts/bin64/SOEM_wrapper/soem_wrapper.vcxproj /p:Configuraton=$Env:CONFIGURATION
 
-      dotnet build .\src\EtherCAT.NET\EtherCAT.NET.csproj -c $Env:CONFIGURATION /p:Build=$Env:APPVEYOR_BUILD_NUMBER /p:IsFinalBuild=$Env:APPVEYOR_REPO_TAG /p:IsPublicBuild=True
+      dotnet build ./src/EtherCAT.NET/EtherCAT.NET.csproj -c $Env:CONFIGURATION /p:Build=$Env:APPVEYOR_BUILD_NUMBER /p:IsFinalBuild=$Env:APPVEYOR_REPO_TAG /p:IsPublicBuild=True
     }
 
 after_build:
@@ -71,6 +68,9 @@ after_build:
       Push-AppveyorArtifact "./artifacts/bin32/SOEM_wrapper/$env:FileName" -FileName "lib32"
       Push-AppveyorArtifact "./artifacts/bin64/SOEM_wrapper/$env:FileName" -FileName "lib64"
     }
+
+test_script:
+- ps: dotnet test ./tests/EtherCAT.NET.Tests -c $Env:CONFIGURATION /p:BuildProjectReferences=false
 
 artifacts:
   - path: ./artifacts/packages/**/*.nupkg

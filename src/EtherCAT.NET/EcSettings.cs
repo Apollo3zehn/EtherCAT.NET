@@ -1,16 +1,12 @@
-﻿using EtherCAT.Infrastructure;
-
-namespace EtherCAT
+﻿namespace EtherCAT
 {
     public class EcSettings
     {
         #region Constructors
 
-        public EcSettings(string esiDirectoryPath, uint nativeSampleRate)
+        public EcSettings(uint cycleFrequency, string esiDirectoryPath, string nicHardwareAddress)
         {
-            this.RootSlaveInfo = null;
-
-            this.NativeSampleRate = nativeSampleRate;
+            this.CycleFrequency = cycleFrequency;
             this.FrameCount = 15000;
             this.TargetTimeDifference = 100;
             this.DriftCompensationRate = 850000;
@@ -19,7 +15,7 @@ namespace EtherCAT
             this.MaxRetries = 3;
             this.WatchdogSleepTime = 1;
 
-            this.NicHardwareAddress = string.Empty;
+            this.NicHardwareAddress = nicHardwareAddress;
             this.EsiDirectoryPath = esiDirectoryPath;
         }
 
@@ -27,9 +23,7 @@ namespace EtherCAT
 
         #region Properties
 
-        public SlaveInfo RootSlaveInfo { get; set; }
-
-        public uint NativeSampleRate { get; }
+        public uint CycleFrequency { get; }
         public uint FrameCount { get; set; }
         public uint TargetTimeDifference { get; set; }
         public uint DriftCompensationRate { get; set; }
