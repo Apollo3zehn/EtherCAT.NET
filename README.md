@@ -2,6 +2,8 @@
 
 [![AppVeyor](https://ci.appveyor.com/api/projects/status/github/apollo3zehn/ethercat.net?svg=true)](https://ci.appveyor.com/project/Apollo3zehn/ethercat-net)
 
+> **WARNING**: The current package contains no Linux libs since AppVeyor has not yet updated to Visual Studio 2019 and .NET Core 3.0 preview 4.
+
 A large amount of the logic of EtherCAT.NET comes from the data acquisition software [OneDAS](https://github.com/OneDAS-Group/OneDAS-Core), where the master has been extensively tested on many slaves from Beckhoff, Gantner and Anybus. Due to the effort to reduce protocol specific logic within OneDAS and to allow standalone use of the EtherCAT master, EtherCAT.NET was born. 
 
 EtherCAT.NET itself provides high-level abstraction of the underlying native *Simple Open Source EtherCAT Master* ([SOEM](https://github.com/OpenEtherCATsociety/soem)). To accomplish this, the solution contains another project: SOEM.PInvoke. It comprises the actual native libraries for Windows and Linux and allows to simply P/Invoke into the native SOEM methods. The intention is to provide a managed way to access the native SOEM master. EtherCAT.NET depends on SOEM.PInvoke and adds classes for high-level abstraction.
