@@ -1,63 +1,63 @@
-﻿using EtherCAT.Infrastructure;
-using EtherCAT.NET.Extensibility;
-using OneDas.Extensibility;
-using OneDas.Infrastructure;
-using System;
+﻿//using EtherCAT.Infrastructure;
+//using EtherCAT.NET.Extensibility;
+//using OneDas.Extensibility;
+//using OneDas.Infrastructure;
+//using System;
 
-namespace EtherCAT.Extension
-{
-    public class DistributedClocksSupporter : IExtensionSupporter
-    {
-        #region "Fields"
+//namespace EtherCAT.Extension
+//{
+//    public class DistributedClocksSupporter : IExtensionSupporter
+//    {
+//        #region "Fields"
 
-        private IOneDasSerializer _oneDasSerializer;
-        private IExtensionFactory _extensionFactory;
+//        private IOneDasSerializer _oneDasSerializer;
+//        private IExtensionFactory _extensionFactory;
 
-        #endregion
+//        #endregion
 
-        #region "Constructors"
+//        #region "Constructors"
 
-        public DistributedClocksSupporter(IExtensionFactory extensionFactory, IOneDasSerializer oneDasSerializer)
-        {
-            _extensionFactory = extensionFactory;
-            _oneDasSerializer = oneDasSerializer;
-        }
+//        public DistributedClocksSupporter(IExtensionFactory extensionFactory, IOneDasSerializer oneDasSerializer)
+//        {
+//            _extensionFactory = extensionFactory;
+//            _oneDasSerializer = oneDasSerializer;
+//        }
 
-        #endregion
+//        #endregion
 
-        #region "Methods"
+//        #region "Methods"
 
-        public void Initialize()
-        {
-            //
-        }
+//        public void Initialize()
+//        {
+//            //
+//        }
 
-        public ActionResponse HandleActionRequest(ActionRequest actionRequest)
-        {
-            object returnData;
-            SlaveInfo slaveInfo;
+//        public ActionResponse HandleActionRequest(ActionRequest actionRequest)
+//        {
+//            object returnData;
+//            SlaveInfo slaveInfo;
 
-            switch (actionRequest.MethodName)
-            {
-                case "GetOpModes":
+//            switch (actionRequest.MethodName)
+//            {
+//                case "GetOpModes":
 
-                    slaveInfo = _oneDasSerializer.Deserialize<SlaveInfo>(actionRequest.Data);
-                    slaveInfo.Validate();
+//                    slaveInfo = _oneDasSerializer.Deserialize<SlaveInfo>(actionRequest.Data);
+//                    slaveInfo.Validate();
 
-                    ExtensibilityHelper.CreateDynamicData(_extensionFactory, slaveInfo);
+//                    ExtensibilityHelper.CreateDynamicData(_extensionFactory, slaveInfo);
 
-                    returnData = slaveInfo.GetOpModes();
+//                    returnData = slaveInfo.GetOpModes();
 
-                    break;
+//                    break;
 
-                default:
+//                default:
 
-                    throw new ArgumentException("unknown method name");
-            }
+//                    throw new ArgumentException("unknown method name");
+//            }
 
-            return new ActionResponse(returnData);
-        }
+//            return new ActionResponse(returnData);
+//        }
 
-        #endregion
-    }
-}
+//        #endregion
+//    }
+//}

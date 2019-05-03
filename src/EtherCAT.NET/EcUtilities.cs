@@ -152,6 +152,18 @@ namespace EtherCAT
             return NetworkInterface.GetAllNetworkInterfaces().Where(x => x.NetworkInterfaceType == NetworkInterfaceType.Ethernet).ToDictionary(x => x.Description, x => x.GetPhysicalAddress().ToString());
         }
 
+        public static SlaveInfo ScanDevices(string nicHardwareAddress, SlaveInfo referenceSlaveInfo = null)
+        {
+            IntPtr context;
+            SlaveInfo slaveInfo;
+
+            context = EcHL.CreateContext();
+            slaveInfo = EcUtilities.ScanDevices(context, nicHardwareAddress, referenceSlaveInfo);
+            EcHL.FreeContext(context);
+
+            return slaveInfo;
+        }
+
         /// <summary>
         /// Initializes EtherCAT and returns found slaves. 
         /// </summary>

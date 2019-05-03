@@ -15,7 +15,7 @@ namespace EtherCAT.NET.Extensibility
 {
     public static class ExtensibilityHelper
     {
-        public static void CreateDynamicData(IExtensionFactory extensionFactory, SlaveInfo slaveInfo)
+        public static void CreateDynamicData(string esiDirectoryPath, IExtensionFactory extensionFactory, SlaveInfo slaveInfo)
         {
             string name;
             string description;
@@ -25,7 +25,7 @@ namespace EtherCAT.NET.Extensibility
             // find ESI
             if (slaveInfo.Csa != 0)
             {
-                (slaveInfo.SlaveEsi, slaveInfo.SlaveEsi_Group) = EsiUtilities.FindEsi(slaveInfo.Manufacturer, slaveInfo.ProductCode, slaveInfo.Revision);
+                (slaveInfo.SlaveEsi, slaveInfo.SlaveEsi_Group) = EsiUtilities.FindEsi(esiDirectoryPath, slaveInfo.Manufacturer, slaveInfo.ProductCode, slaveInfo.Revision);
             }
 
             //
@@ -39,8 +39,7 @@ namespace EtherCAT.NET.Extensibility
             {
                 description = description.Substring(name.Length);
             }
-
-            if (string.IsNullOrWhiteSpace(description))
+            else if (string.IsNullOrWhiteSpace(description))
             {
                 description = "no description available";
             }
@@ -84,7 +83,7 @@ namespace EtherCAT.NET.Extensibility
 
                         pdoSet.Add(slavePdo);
 
-                        IEnumerable<SlaveVariable> slaveVariableSet = pdoType.Entry.Select(x =>
+                        IList<SlaveVariable> slaveVariableSet = pdoType.Entry.Select(x =>
                         {
                             ushort variableIndex = ushort.Parse(x.Index.Value.Substring(2), NumberStyles.HexNumber);
                             byte subIndex = Convert.ToByte(Convert.ToByte(x.SubIndex));
@@ -107,7 +106,7 @@ namespace EtherCAT.NET.Extensibility
 
                             pdoSet.Add(slavePdo);
 
-                            IEnumerable<SlaveVariable> slaveVariableSet = pdoType.Entry.Select(x =>
+                            IList<SlaveVariable> slaveVariableSet = pdoType.Entry.Select(x =>
                             {
                                 ushort variableIndex = ushort.Parse(x.Index.Value.Substring(2), NumberStyles.HexNumber);
                                 byte subIndex = Convert.ToByte(Convert.ToByte(x.SubIndex) + indexOffset_Tmp);
@@ -187,7 +186,7 @@ namespace EtherCAT.NET.Extensibility
             slaveInfo.SlaveExtensionSet.ToList().ForEach(slaveExtension => slaveExtension.SlaveInfo = slaveInfo);
         }
 
-        public static SlaveInfo ReloadHardware(IExtensionFactory extensionFactory, string nicHardwareAdress, SlaveInfo referenceRootSlaveInfo)
+        public static SlaveInfo ReloadHardware(string esiDirectoryPath, IExtensionFactory extensionFactory, string nicHardwareAdress, SlaveInfo referenceRootSlaveInfo)
         {
             IntPtr context;
             SlaveInfo newRootSlaveInfo;
@@ -214,18 +213,18 @@ namespace EtherCAT.NET.Extensibility
             newRootSlaveInfo.Descendants().ToList().ForEach(slaveInfo =>
             {
                 referenceSlaveInfo = slaveInfo.Csa == slaveInfo.OldCsa ? referenceSlaveInfoSet?.FirstOrDefault(x => x.Csa == slaveInfo.Csa) : null;
-                ExtensibilityHelper.GetDynamicSlaveInfoData(extensionFactory, slaveInfo);
+                ExtensibilityHelper.GetDynamicSlaveInfoData(esiDirectoryPath, extensionFactory, slaveInfo);
                 ExtensibilityHelper.UpdateSlaveExtensions(extensionFactory, slaveInfo, referenceSlaveInfo);
             });
 
             return newRootSlaveInfo;
         }
 
-        public static SlaveInfoDynamicData GetDynamicSlaveInfoData(IExtensionFactory extensionFactory, SlaveInfo slaveInfo)
+        public static SlaveInfoDynamicData GetDynamicSlaveInfoData(string esiDirectoryPath, IExtensionFactory extensionFactory, SlaveInfo slaveInfo)
         {
             if (slaveInfo.Csa > 0)
             {
-                ExtensibilityHelper.CreateDynamicData(extensionFactory, slaveInfo);
+                ExtensibilityHelper.CreateDynamicData(esiDirectoryPath, extensionFactory, slaveInfo);
 
                 return slaveInfo.DynamicData;
             }

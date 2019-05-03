@@ -45,13 +45,13 @@ namespace EtherCAT.Infrastructure
         public int SyncManager { get; set; }
 
         [DataMember]
-        public IEnumerable<SlaveVariable> VariableSet { get; private set; }
+        public IList<SlaveVariable> VariableSet { get; private set; }
 
         #endregion
 
         #region "Methods"
 
-        public void SetVariableSet(IEnumerable<SlaveVariable> variableSet)
+        public void SetVariableSet(IList<SlaveVariable> variableSet)
         {
             Contract.Requires(variableSet != null);
 

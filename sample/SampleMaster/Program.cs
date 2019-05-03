@@ -3,10 +3,10 @@ using EtherCAT.NET.Extensibility;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using OneDas.Extensibility;
-using SOEM.PInvoke;
 using System;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -34,33 +34,50 @@ namespace SampleMaster
             var provider = services.BuildServiceProvider();
             var extensionFactory = provider.GetRequiredService<IExtensionFactory>();
             var loggerFactory = provider.GetRequiredService<ILoggerFactory>();
+            var logger = loggerFactory.CreateLogger("EtherCAT Master");
 
             /* create EtherCAT master settings (with 10 Hz cycle frequency) */
             var cycleFrequency = 10U;
+            var hardwareAddress = args.Any() ? args[0] : string.Empty;
             var esiDirectoryPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ESI");
-            var settings = new EcSettings(cycleFrequency, esiDirectoryPath, "106530387D67");
+            var settings = new EcSettings(cycleFrequency, esiDirectoryPath, hardwareAddress);
 
-            /* create hierachical slave info */
-            // TODO: simplify
-            EsiUtilities.InitializeEsi(settings.EsiDirectoryPath);
+            /* create root slave info by scanning available slaves */
+            var rootSlaveInfo = EcUtilities.ScanDevices(settings.NicHardwareAddress);
 
-            var context = EcHL.CreateContext();
-            var slaveInfo = EcUtilities.ScanDevices(EcHL.CreateContext(), settings.NicHardwareAddress);
-
-            slaveInfo.Descendants().ToList().ForEach(current =>
+            rootSlaveInfo.Descendants().ToList().ForEach(current =>
             {
-                ExtensibilityHelper.CreateDynamicData(extensionFactory, current);
+                ExtensibilityHelper.CreateDynamicData(settings.EsiDirectoryPath, extensionFactory, current);
             });
 
-            EcHL.FreeContext(context);
+            /* print list of slaves */
+            var message = new StringBuilder();
+            var slaves = rootSlaveInfo.Descendants().ToList();
+
+            message.AppendLine($"Found {slaves.Count()} slaves:");
+
+            slaves.ForEach(current =>
+            {
+                message.AppendLine($"{current.DynamicData.Name} (PDOs: {current.DynamicData.PdoSet.Count} - CSA: { current.Csa })");
+            });
+
+            logger.LogInformation(message.ToString().TrimEnd());
+
+            /* create variable references for later use */
+            var variables = slaves.SelectMany(child => child.GetVariableSet()).ToList();
 
             /* create EC Master */
-            using (var master = new EcMaster(slaveInfo, settings, extensionFactory, loggerFactory.CreateLogger("EtherCAT Master")))
+            using (var master = new EcMaster(settings, extensionFactory, logger))
             {
-                master.Configure();
-
-                /* create variable references */
-                var variableSet = slaveInfo.Descendants().SelectMany(child => child.GetVariableSet()).ToList();
+                try
+                {
+                    master.Configure(rootSlaveInfo);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex.Message);
+                    throw;
+                }
 
                 /* start master */
                 var random = new Random();
@@ -72,14 +89,13 @@ namespace SampleMaster
 
                     while (!cts.IsCancellationRequested)
                     {
-                        master.UpdateIo(DateTime.UtcNow);
+                        master.UpdateIO(DateTime.UtcNow);
 
                         unsafe
                         {
-                            // TODO: simplify
-                            if (variableSet.Any())
+                            if (variables.Any())
                             {
-                                var myVariableSpan = new Span<int>(variableSet.First().DataPtr.ToPointer(), 1);
+                                var myVariableSpan = new Span<int>(variables.First().DataPtr.ToPointer(), 1);
                                 myVariableSpan[0] = random.Next(0, 100);
                             }
                         }
