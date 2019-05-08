@@ -55,8 +55,8 @@ build_script:
     }
     elseif ($isWindows)
     { 
-      msbuild ./artifacts/bin32/SOEM_wrapper/soem_wrapper.vcxproj /p:Configuraton=$Env:CONFIGURATION
-      msbuild ./artifacts/bin64/SOEM_wrapper/soem_wrapper.vcxproj /p:Configuraton=$Env:CONFIGURATION
+      msbuild ./artifacts/bin32/SOEM_wrapper/soem_wrapper.vcxproj /p:Configuration=$Env:CONFIGURATION
+      msbuild ./artifacts/bin64/SOEM_wrapper/soem_wrapper.vcxproj /p:Configuration=$Env:CONFIGURATION
 
       dotnet build ./src/EtherCAT.NET/EtherCAT.NET.csproj -c $Env:CONFIGURATION /p:Build=$Env:APPVEYOR_BUILD_NUMBER /p:IsFinalBuild=$Env:APPVEYOR_REPO_TAG /p:IsPublicBuild=True
     }
@@ -76,12 +76,25 @@ artifacts:
   - path: ./artifacts/packages/**/*.nupkg
 
 deploy:
+
+# MyGet (dev)
   - provider: NuGet
-    server: https://www.nuget.org/api/v2/package
+    server: https://www.myget.org/F/apollo3zehn-dev/api/v2/package
     api_key:
-      secure: Z+/E7/8k05NePoUmHdtw/sTn6GSM+0e7ko6A02/rBjm6K9wVTYNekWHvSv7GEBtC
+      secure: DVadlPknnKPMR4F2+3VqeU7BFFmtLcXDHzkySA590MqQNIdzbx8HRuaPwDVbHRqX
     skip_symbols: true
     artifact: /.*\.nupkg/ 
     on:
-      branch: master
+      branch: dev
       CI_WINDOWS: true
+
+# NuGet (master)
+  - provider: NuGet
+    server: https://www.nuget.org/api/v2/package
+    api_key:
+      secure: WqZcnRwOmzIa+INti/HnihBrUz0u71rTRNElX/2wbuAIbzMX6SV8h4OxJtCaX2vN
+    skip_symbols: true
+    artifact: /.*\.nupkg/ 
+    on:
+      CI_WINDOWS: true
+      APPVEYOR_REPO_TAG: true

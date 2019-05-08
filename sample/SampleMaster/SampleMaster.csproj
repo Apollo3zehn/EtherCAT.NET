@@ -13,20 +13,4 @@
     <ProjectReference Include="..\..\src\EtherCAT.NET\EtherCAT.NET.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Compile Update="Resources\ErrorMessage.Designer.cs">
-      <DependentUpon>ErrorMessage.resx</DependentUpon>
-      <DesignTime>True</DesignTime>
-      <AutoGen>True</AutoGen>
-    </Compile>
-  </ItemGroup>
-
-  <ItemGroup>
-    <EmbeddedResource Update="Resources\ErrorMessage.resx">
-      <CustomToolNamespace>SampleMaster</CustomToolNamespace>
-      <LastGenOutput>ErrorMessage.Designer.cs</LastGenOutput>
-      <Generator>ResXFileCodeGenerator</Generator>
-    </EmbeddedResource>
-  </ItemGroup>
-
 </Project>

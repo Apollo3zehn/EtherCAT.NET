@@ -105,7 +105,7 @@ namespace SampleMaster
                 }, cts.Token);
 
                 /* wait for stop signal */
-                Console.ReadKey();
+                Console.ReadKey(true);
 
                 cts.Cancel();
                 await task;

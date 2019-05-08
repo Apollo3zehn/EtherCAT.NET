@@ -10,9 +10,9 @@ EtherCAT.NET itself provides high-level abstraction of the underlying native *Si
 
 In its current state, many, but not all planned features are already implemented. Thus only an alpha version is available ([NuGet](https://www.nuget.org/packages/EtherCAT.NET)) up to now. This mainly means that any EtherCAT network can be configured and started, but high-level features like simple configuration of the SDOs are not yet implemented. 
 
-As written in the repository description, this master already supports slave configuration via ESI files. In fact, these files are *required* to allow the master to work. As shown in the sample [sample](https://github.com/Apollo3zehn/EtherCAT.NET/tree/master/sample/SampleMaster), you need to point the configuration to the folder, where the ESI files live.
+This master already supports slave configuration via ESI files. In fact, these files are *required* for the master to work. As shown in the [sample](sample/SampleMaster), you need to point the configuration to the folder, where the ESI files live.
 
-Another (half-working) feature is to allow the configuration of complex slaves. For example, this master has been sucessfully tested with the Profibus terminal (```EL6731-0010```). TwinCAT allow confguration of this terminal through a special configuration page. Since creating high-level configuration interface for each complex slave is much work, the priority for EtherCAT.NET lies on providing a simple interface to customize SDOs (like in TwinCAT), so that the end user can tune the required settings for any slave in a generic way. 
+Another feature is the configuration of complex slaves. For example, this master has been sucessfully tested with the Profibus terminal (```EL6731-0010```). TwinCAT allows confguration of this terminal through a special configuration page. Since creating high-level configuration interfaces for each complex slave is much work, the priority for EtherCAT.NET lies on providing a simple interface to customize SDOs (like in TwinCAT), so that the end user can tune the required settings for any slave in a generic way. 
 
 ## Prerequisites (at runtime)
 
@@ -20,7 +20,7 @@ Another (half-working) feature is to allow the configuration of complex slaves. 
 
 ## Building the solution
 
-You need to the following tools to build the solution:
+You need the following tools to build the solution:
 
 * Visual Studio 2019 (on Windows)
 * PowerShell Core
@@ -32,8 +32,8 @@ It can then be built as follows:
     On Windows, if you don't want to install Powershell Core, you can adapt the script and replace ```$IsWindows``` with ```$true```.
 2. On Windows, run*:
     ```
-    msbuild ./artifacts/bin32/SOEM_wrapper/soem_wrapper.vcxproj /p:Configuraton=Release
-    msbuild ./artifacts/bin64/SOEM_wrapper/soem_wrapper.vcxproj /p:Configuraton=Release
+    msbuild ./artifacts/bin32/SOEM_wrapper/soem_wrapper.vcxproj /p:Configuration=Release
+    msbuild ./artifacts/bin64/SOEM_wrapper/soem_wrapper.vcxproj /p:Configuration=Release
     ```
     (* use Visual Studio command prompt if ```msbuild``` is not available in the ```PATH``` variable).
 3. On Linux, run:
@@ -121,22 +121,26 @@ var variables = pdo.VariableSet;
 var variable0 = variables[0];
 ```
 
-A variable holds a reference to a certain address in RAM. This address is held in the property ```variable0.DataPtr```. During runtime, after configuration of the master, this address is set to a real RAM address. So the data can be manipulated using the ```unsafe``` keyword. Here we have a boolean variable, which is a single bit in EtherCAT, and it can be [toggled](https://stackoverflow.com/questions/47981/how-do-you-set-clear-and-toggle-a-single-bit) by the following code:
+A variable holds a reference to a certain address in RAM. This address is found in the property ```variable0.DataPtr```. During runtime (after configuration of the master), this address is set to a real RAM address. So the data can be manipulated using the ```unsafe``` keyword. Here we have a boolean variable, which is a single bit in EtherCAT, and it can be [toggled](https://stackoverflow.com/questions/47981/how-do-you-set-clear-and-toggle-a-single-bit) with the following code:
 
+```cs
 unsafe
 {
     var myVariableSpan = new Span<int>(variable0.DataPtr.ToPointer(), 1);
     myVariableSpan[0] ^= 1UL << variable0.DataPtr.BitOffset;
 }
+```
 
-Be careful using raw pointer, to not access data outside 
+Be careful using raw pointers, to not access data outside the array.
 
 ### Running the master
 
-First, a ```EcSettings``` object must be created. The constructor takes the parameters ```cycleFrequency```, ```esiDirectoryPath``` and ```hardwareAddress```. The first one specifies the cycle time of the master and is important for distributed clock configuration. The second one is a path to a folder containing the ESI files. The ESI ```.xml``` files from Beckhoff can be downloaded [here](https://www.beckhoff.de/default.asp?download/elconfg.htm). The first startup may take a while since an ESI cache is built to speed-up subsequent starts. Whenever a new and unknown slave is added, this cache is rebuilt.
-The last property, ```hardwareAddress``` is the MAC address of your network interface.
+First, an ```EcSettings``` object must be created. The constructor takes the parameters ```cycleFrequency```, ```esiDirectoryPath``` and ```hardwareAddress```. The first one specifies the cycle time of the master and is important for distributed clock configuration. The last one, ```hardwareAddress```, is the MAC address of your network interface.
 
-With the ```EcSettings``` object and a few more types (like ILogger, see the sample), the master can be put in operation using:
+The ```esiDirectoryPath``` parameter contains a path to a folder containing the ESI files. For Beckhoff slaves, these can be downloaded [here](https://www.beckhoff.de/default.asp?download/elconfg.htm). 
+The first startup may take a while since an ESI cache is built to speed-up subsequent starts. Whenever a new and unknown slave is added, this cache is rebuilt.
+
+With the ```EcSettings``` object and a few more types (like ```ILogger```, see the sample), the master can be put in operation using:
 
 ```cs
 using (var master = new EcMaster(rootSlaveInfo, settings, extensionFactory, logger))

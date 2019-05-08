@@ -61,10 +61,15 @@ namespace EtherCAT
 
         #region Constructors
 
+        public EcMaster(EcSettings settings, IExtensionFactory extensionFactory) : this(settings, extensionFactory, NullLogger.Instance)
+        {
+            //
+        }
+
         public EcMaster(EcSettings settings, IExtensionFactory extensionFactory, ILogger logger)
         {
             _settings = settings.ShallowCopy();
-            _logger = logger != null ? logger : NullLogger.Instance;
+            _logger = logger;
             _extensionFactory = extensionFactory;
 
             this.Context = EcHL.CreateContext();

@@ -3,7 +3,7 @@
   <Import Project="./build/build.props" />
 
   <PropertyGroup>
-    <PackageLicenseUrl Condition="$(PackageLicenseUrl) == ''">https://github.com/Apollo3zehn/EtherCAT.NET/blob/master/LICENSE.md</PackageLicenseUrl>
+    <PackageLicense Condition="$(PackageLicense) == ''">https://github.com/Apollo3zehn/EtherCAT.NET/blob/master/LICENSE.md</PackageLicense>
     <PackageProjectUrl Condition="$(PackageProjectUrl) == ''">https://github.com/Apollo3zehn/EtherCAT.NET</PackageProjectUrl>
   </PropertyGroup>
 
