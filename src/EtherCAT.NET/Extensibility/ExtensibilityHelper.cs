@@ -186,7 +186,7 @@ namespace EtherCAT.NET.Extensibility
             slaveInfo.SlaveExtensionSet.ToList().ForEach(slaveExtension => slaveExtension.SlaveInfo = slaveInfo);
         }
 
-        public static SlaveInfo ReloadHardware(string esiDirectoryPath, IExtensionFactory extensionFactory, string nicHardwareAdress, SlaveInfo referenceRootSlaveInfo)
+        public static SlaveInfo ReloadHardware(string esiDirectoryPath, IExtensionFactory extensionFactory, string interfaceName, SlaveInfo referenceRootSlaveInfo)
         {
             IntPtr context;
             SlaveInfo newRootSlaveInfo;
@@ -196,13 +196,13 @@ namespace EtherCAT.NET.Extensibility
             referenceSlaveInfo = null;
             referenceSlaveInfoSet = null;
 
-            if (NetworkInterface.GetAllNetworkInterfaces().Where(x => x.GetPhysicalAddress().ToString() == nicHardwareAdress).FirstOrDefault()?.OperationalStatus != OperationalStatus.Up)
+            if (NetworkInterface.GetAllNetworkInterfaces().Where(x => x.GetPhysicalAddress().ToString() == interfaceName).FirstOrDefault()?.OperationalStatus != OperationalStatus.Up)
             {
-                throw new Exception($"The targeted network interface with physical address {nicHardwareAdress} is not linked. Aborting action.");
+                throw new Exception($"The network interface '{interfaceName}' is not linked. Aborting action.");
             }
 
             context = EcHL.CreateContext();
-            newRootSlaveInfo = EcUtilities.ScanDevices(context, nicHardwareAdress, referenceRootSlaveInfo);
+            newRootSlaveInfo = EcUtilities.ScanDevices(context, interfaceName, referenceRootSlaveInfo);
             EcHL.FreeContext(context);
 
             if (referenceRootSlaveInfo != null)

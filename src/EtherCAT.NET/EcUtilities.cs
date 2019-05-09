@@ -152,13 +152,13 @@ namespace EtherCAT
             return NetworkInterface.GetAllNetworkInterfaces().Where(x => x.NetworkInterfaceType == NetworkInterfaceType.Ethernet).ToDictionary(x => x.Description, x => x.GetPhysicalAddress().ToString());
         }
 
-        public static SlaveInfo ScanDevices(string nicHardwareAddress, SlaveInfo referenceSlaveInfo = null)
+        public static SlaveInfo ScanDevices(string interfaceName, SlaveInfo referenceSlaveInfo = null)
         {
             IntPtr context;
             SlaveInfo slaveInfo;
 
             context = EcHL.CreateContext();
-            slaveInfo = EcUtilities.ScanDevices(context, nicHardwareAddress, referenceSlaveInfo);
+            slaveInfo = EcUtilities.ScanDevices(context, interfaceName, referenceSlaveInfo);
             EcHL.FreeContext(context);
 
             return slaveInfo;
@@ -167,9 +167,9 @@ namespace EtherCAT
         /// <summary>
         /// Initializes EtherCAT and returns found slaves. 
         /// </summary>
-        /// <param name="nicHardwareAddress">The physical address of the network adapter.</param>
+        /// <param name="interfaceName">The name of the network adapter.</param>
         /// <returns>Returns found slave.</returns>
-        public static SlaveInfo ScanDevices(IntPtr context, string nicHardwareAddress, SlaveInfo referenceSlaveInfo = null)
+        public static SlaveInfo ScanDevices(IntPtr context, string interfaceName, SlaveInfo referenceSlaveInfo = null)
         {
             int offset;
             int slaveCount;
@@ -181,7 +181,9 @@ namespace EtherCAT
 
             //
             offset = 0;
-            networkInterface = NetworkInterface.GetAllNetworkInterfaces().Where(x => x.GetPhysicalAddress().ToString() == nicHardwareAddress).FirstOrDefault();
+
+            networkInterface = NetworkInterface.GetAllNetworkInterfaces().Where(nic => nic.Name == interfaceName).FirstOrDefault();
+
             newSlaveIdentificationSet = null;
 
             if (referenceSlaveInfo != null)
@@ -196,10 +198,17 @@ namespace EtherCAT
             // scan devices
             if (networkInterface == null)
             {
-                throw new Exception($"{ ErrorMessage.SoemWrapper_NetworkInterfaceNotFound } Physical address: { nicHardwareAddress }.");
+                throw new Exception($"{ ErrorMessage.SoemWrapper_NetworkInterfaceNotFound } Interface name: '{ interfaceName }'.");
             }
 
-            EcUtilities.CheckErrorCode(context, EcHL.ScanDevices(context, $@"rpcap://\Device\NPF_{ networkInterface.Id }", out slaveIdentificationSet, out slaveCount));
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                interfaceName = $@"rpcap://\Device\NPF_{ networkInterface.Id }";
+            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+                interfaceName = $"{interfaceName}";
+            else
+                throw new PlatformNotSupportedException();
+
+            EcUtilities.CheckErrorCode(context, EcHL.ScanDevices(context, interfaceName, out slaveIdentificationSet, out slaveCount));
 
             // create slaveInfo from received data
             newSlaveIdentificationSet = new ec_slave_info_t[slaveCount + 1]; // correct because EC master = slaveIdentificationSet[0]

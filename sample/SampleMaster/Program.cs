@@ -1,14 +1,18 @@
 ﻿using EtherCAT;
 using EtherCAT.NET.Extensibility;
+using Microsoft.DotNet.PlatformAbstractions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using OneDas.Extensibility;
 using System;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+
+using System.Net.NetworkInformation;
 
 namespace SampleMaster
 {
@@ -17,13 +21,18 @@ namespace SampleMaster
         static async Task Main(string[] args)
         {
             /* Copy native file. NOT required in end user scenarios, where this package is installed via NuGet! */
-            Directory.EnumerateFiles("./runtimes/", "*.dll", SearchOption.AllDirectories).ToList().ForEach(filePath =>
+            var codeBase = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+
+            Directory.EnumerateFiles(Path.Combine(codeBase, "runtimes"), "*soem_wrapper.*", SearchOption.AllDirectories).ToList().ForEach(filePath =>
             {
-                if (filePath.Contains("win-x64"))
+                if (filePath.Contains(RuntimeEnvironment.RuntimeArchitecture))
                 {
-                    File.Copy(filePath, Path.GetFileName(filePath), true);
+                    File.Copy(filePath, Path.Combine(codeBase, Path.GetFileName(filePath)), true);
                 }
             });
+
+            /* set interface ID */
+            var interfaceName = "eth0";
 
             /* prepare dependency injection */
             var services = new ServiceCollection();
@@ -38,12 +47,11 @@ namespace SampleMaster
 
             /* create EtherCAT master settings (with 10 Hz cycle frequency) */
             var cycleFrequency = 10U;
-            var hardwareAddress = args.Any() ? args[0] : string.Empty;
             var esiDirectoryPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ESI");
-            var settings = new EcSettings(cycleFrequency, esiDirectoryPath, hardwareAddress);
+            var settings = new EcSettings(cycleFrequency, esiDirectoryPath, interfaceName);
 
             /* create root slave info by scanning available slaves */
-            var rootSlaveInfo = EcUtilities.ScanDevices(settings.NicHardwareAddress);
+            var rootSlaveInfo = EcUtilities.ScanDevices(settings.InterfaceName);
 
             rootSlaveInfo.Descendants().ToList().ForEach(current =>
             {

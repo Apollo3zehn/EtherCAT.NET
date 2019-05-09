@@ -259,15 +259,18 @@ namespace EtherCAT
             SlaveInfo actualSlaveInfo;
             IList<SlaveInfo> slaveInfoSet;
             IList<SlaveInfo> actualSlaveInfoSet;
+            NetworkInterface networkInterface;
 
-            if (NetworkInterface.GetAllNetworkInterfaces().Where(x => x.GetPhysicalAddress().ToString() == _settings.NicHardwareAddress).FirstOrDefault()?.OperationalStatus != OperationalStatus.Up)
+            networkInterface = NetworkInterface.GetAllNetworkInterfaces().Where(nic => nic.Name == _settings.InterfaceName).FirstOrDefault();
+
+            if (networkInterface?.OperationalStatus != OperationalStatus.Up)
             {
-                throw new Exception($"The targeted network interface with physical address { _settings.NicHardwareAddress } is not linked. Aborting action.");
+                throw new Exception($"Network interface '{_settings.InterfaceName}' is not linked. Aborting action.");
             }
 
             #region "PreOp"
 
-            actualSlaveInfo = EcUtilities.ScanDevices(this.Context, _settings.NicHardwareAddress, null);
+            actualSlaveInfo = EcUtilities.ScanDevices(this.Context, _settings.InterfaceName, null);
 
             if (rootSlaveInfo == null)
             {

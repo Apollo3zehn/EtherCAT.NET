@@ -135,7 +135,7 @@ Be careful using raw pointers, to not access data outside the array.
 
 ### Running the master
 
-First, an ```EcSettings``` object must be created. The constructor takes the parameters ```cycleFrequency```, ```esiDirectoryPath``` and ```hardwareAddress```. The first one specifies the cycle time of the master and is important for distributed clock configuration. The last one, ```hardwareAddress```, is the MAC address of your network interface.
+First, an ```EcSettings``` object must be created. The constructor takes the parameters ```cycleFrequency```, ```esiDirectoryPath``` and ```interfaceName```. The first one specifies the cycle time of the master and is important for distributed clock configuration. The last one, ```interfaceName```, is the Name of your network interface (e.g. ```eth0```).
 
 The ```esiDirectoryPath``` parameter contains a path to a folder containing the ESI files. For Beckhoff slaves, these can be downloaded [here](https://www.beckhoff.de/default.asp?download/elconfg.htm). 
 The first startup may take a while since an ESI cache is built to speed-up subsequent starts. Whenever a new and unknown slave is added, this cache is rebuilt.

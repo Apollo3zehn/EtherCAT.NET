@@ -4,7 +4,7 @@
     {
         #region Constructors
 
-        public EcSettings(uint cycleFrequency, string esiDirectoryPath, string nicHardwareAddress)
+        public EcSettings(uint cycleFrequency, string esiDirectoryPath, string interfaceName)
         {
             this.CycleFrequency = cycleFrequency;
             this.FrameCount = 15000;
@@ -15,7 +15,7 @@
             this.MaxRetries = 3;
             this.WatchdogSleepTime = 1;
 
-            this.NicHardwareAddress = nicHardwareAddress;
+            this.InterfaceName = interfaceName;
             this.EsiDirectoryPath = esiDirectoryPath;
         }
 
@@ -32,7 +32,7 @@
         public int MaxRetries { get; set; }
         public int WatchdogSleepTime { get; set; }
 
-        public string NicHardwareAddress { get; set; }
+        public string InterfaceName { get; set; }
         public string EsiDirectoryPath { get; }
 
         #endregion
