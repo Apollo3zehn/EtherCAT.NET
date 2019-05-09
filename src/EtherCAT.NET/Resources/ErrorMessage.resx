@@ -231,6 +231,6 @@ Linux:
     <value>The ID must be greater zero.</value>
   </data>
   <data name="SoemWrapper_NetworkInterfaceNotFound" xml:space="preserve">
-    <value>No corresponding network interface could be found.</value>
+    <value>The specified network interface could not be found.</value>
   </data>
 </root>

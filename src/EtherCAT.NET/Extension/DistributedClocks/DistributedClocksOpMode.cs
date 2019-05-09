@@ -1,9 +1,9 @@
-﻿using EtherCAT.Infrastructure;
+﻿using EtherCAT.NET.Infrastructure;
 using System;
 using System.Globalization;
 using System.Runtime.Serialization;
 
-namespace EtherCAT.Extension
+namespace EtherCAT.NET.Extension
 {
     [DataContract]
     public class DistributedClocksOpMode

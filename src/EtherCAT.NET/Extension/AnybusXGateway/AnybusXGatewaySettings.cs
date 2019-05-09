@@ -1,5 +1,5 @@
-﻿using EtherCAT.Extensibility;
-using EtherCAT.Infrastructure;
+﻿using EtherCAT.NET.Extensibility;
+using EtherCAT.NET.Infrastructure;
 using OneDas.Extensibility;
 using OneDas.Infrastructure;
 using System;
@@ -7,7 +7,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.Serialization;
 
-namespace EtherCAT.Extension
+namespace EtherCAT.NET.Extension
 {
     [DataContract]
     [ExtensionContext(typeof(AnybusXGatewayExtension))]

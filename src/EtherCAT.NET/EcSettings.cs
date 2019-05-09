@@ -1,4 +1,4 @@
-﻿namespace EtherCAT
+﻿namespace EtherCAT.NET
 {
     public class EcSettings
     {

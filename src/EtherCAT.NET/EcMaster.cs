@@ -6,9 +6,9 @@ using System.Net.NetworkInformation;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
-using EtherCAT.Extensibility;
-using EtherCAT.Extension;
-using EtherCAT.Infrastructure;
+using EtherCAT.NET.Extensibility;
+using EtherCAT.NET.Extension;
+using EtherCAT.NET.Infrastructure;
 using EtherCAT.NET.Extensibility;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -16,7 +16,7 @@ using OneDas.Extensibility;
 using OneDas.Infrastructure;
 using SOEM.PInvoke;
 
-namespace EtherCAT
+namespace EtherCAT.NET
 {
     public class EcMaster : IDisposable
     {

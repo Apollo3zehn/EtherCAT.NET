@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Runtime.Serialization;
 
-namespace EtherCAT.Infrastructure
+namespace EtherCAT.NET.Infrastructure
 {
     [DataContract]
     public class SlaveInfoDynamicData

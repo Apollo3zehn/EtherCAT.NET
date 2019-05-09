@@ -1,4 +1,4 @@
-﻿using EtherCAT.Infrastructure;
+﻿using EtherCAT.NET.Infrastructure;
 using OneDas.Infrastructure;
 using SOEM.PInvoke;
 using System;
@@ -9,7 +9,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace EtherCAT
+namespace EtherCAT.NET
 {
     public static class EcUtilities
     {

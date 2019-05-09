@@ -1,8 +1,8 @@
-﻿using EtherCAT.Infrastructure;
+﻿using EtherCAT.NET.Infrastructure;
 using OneDas.Extensibility;
 using System.Collections.Generic;
 
-namespace EtherCAT.Extensibility
+namespace EtherCAT.NET.Extensibility
 {
     public abstract class SlaveExtensionLogic : ExtensionLogicBase
     {

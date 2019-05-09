@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Runtime.InteropServices;
 
-namespace EtherCAT.Infrastructure
+namespace EtherCAT.NET.Infrastructure
 {
     [StructLayout(LayoutKind.Sequential)]
     public struct ec_slave_info_t

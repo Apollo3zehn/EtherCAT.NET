@@ -1,6 +1,6 @@
-﻿using EtherCAT.Extensibility;
-using EtherCAT.Extension;
-using EtherCAT.Infrastructure;
+﻿using EtherCAT.NET.Extensibility;
+using EtherCAT.NET.Extension;
+using EtherCAT.NET.Infrastructure;
 using OneDas;
 using OneDas.Extensibility;
 using OneDas.Infrastructure;

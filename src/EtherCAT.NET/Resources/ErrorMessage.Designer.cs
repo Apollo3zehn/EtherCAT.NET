@@ -8,7 +8,7 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-namespace EtherCAT {
+namespace EtherCAT.NET {
     using System;
     
     

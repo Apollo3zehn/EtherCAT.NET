@@ -1,9 +1,9 @@
-﻿using EtherCAT.Infrastructure;
+﻿using EtherCAT.NET.Infrastructure;
 using OneDas.Extensibility;
 using System.Diagnostics.Contracts;
 using System.Runtime.Serialization;
 
-namespace EtherCAT.Extensibility
+namespace EtherCAT.NET.Extensibility
 {
     [DataContract]
     public abstract class SlaveExtensionSettingsBase : ExtensionSettingsBase

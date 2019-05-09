@@ -1,8 +1,8 @@
-﻿using EtherCAT.Extensibility;
-using EtherCAT.Infrastructure;
+﻿using EtherCAT.NET.Extensibility;
+using EtherCAT.NET.Infrastructure;
 using System.Collections.Generic;
 
-namespace EtherCAT.Extension
+namespace EtherCAT.NET.Extension
 {
     public class QBloxxEcA107Extension : SlaveExtensionLogic
     {

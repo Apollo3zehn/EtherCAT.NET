@@ -1,4 +1,4 @@
-﻿using EtherCAT;
+﻿using EtherCAT.NET;
 using EtherCAT.NET.Extensibility;
 using Microsoft.DotNet.PlatformAbstractions;
 using Microsoft.Extensions.DependencyInjection;
@@ -20,7 +20,15 @@ namespace SampleMaster
     {
         static async Task Main(string[] args)
         {
-            /* Copy native file. NOT required in end user scenarios, where this package is installed via NuGet! */
+            /* Set interface name. Edit this to suit your needs. */
+            var interfaceName = "eth0";
+
+            /* Set ESI location. Make sure it contains ESI files! The default path is /home/{user}/.local/share/ESI */
+            var localAppDataPath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            var esiDirectoryPath = Path.Combine(localAppDataPath, "ESI");
+            Directory.CreateDirectory(esiDirectoryPath);
+
+            /* Copy native file. NOT required in end user scenarios, where EtherCAT.NET package is installed via NuGet! */
             var codeBase = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
 
             Directory.EnumerateFiles(Path.Combine(codeBase, "runtimes"), "*soem_wrapper.*", SearchOption.AllDirectories).ToList().ForEach(filePath =>
@@ -30,9 +38,6 @@ namespace SampleMaster
                     File.Copy(filePath, Path.Combine(codeBase, Path.GetFileName(filePath)), true);
                 }
             });
-
-            /* set interface ID */
-            var interfaceName = "eth0";
 
             /* prepare dependency injection */
             var services = new ServiceCollection();
@@ -47,7 +52,6 @@ namespace SampleMaster
 
             /* create EtherCAT master settings (with 10 Hz cycle frequency) */
             var cycleFrequency = 10U;
-            var esiDirectoryPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ESI");
             var settings = new EcSettings(cycleFrequency, esiDirectoryPath, interfaceName);
 
             /* create root slave info by scanning available slaves */

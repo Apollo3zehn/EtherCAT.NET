@@ -1,9 +1,9 @@
-﻿using EtherCAT.Extensibility;
-using EtherCAT.Infrastructure;
+﻿using EtherCAT.NET.Extensibility;
+using EtherCAT.NET.Infrastructure;
 using OneDas.Extensibility;
 using System.Runtime.Serialization;
 
-namespace EtherCAT.Extension
+namespace EtherCAT.NET.Extension
 {
     [DataContract]
     [ExtensionContext(typeof(EL6601Extension))]
