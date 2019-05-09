@@ -1,4 +1,4 @@
-﻿using EtherCAT.NET;
+using EtherCAT.NET;
 using EtherCAT.NET.Extensibility;
 using Microsoft.DotNet.PlatformAbstractions;
 using Microsoft.Extensions.DependencyInjection;
@@ -11,8 +11,6 @@ using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-
-using System.Net.NetworkInformation;
 
 namespace SampleMaster
 {

@@ -9,7 +9,6 @@ using System.Threading.Tasks;
 using EtherCAT.NET.Extensibility;
 using EtherCAT.NET.Extension;
 using EtherCAT.NET.Infrastructure;
-using EtherCAT.NET.Extensibility;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using OneDas.Extensibility;

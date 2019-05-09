@@ -1,5 +1,4 @@
-﻿using EtherCAT.NET.Extensibility;
-using EtherCAT.NET.Extension;
+﻿using EtherCAT.NET.Extension;
 using EtherCAT.NET.Infrastructure;
 using OneDas;
 using OneDas.Extensibility;
