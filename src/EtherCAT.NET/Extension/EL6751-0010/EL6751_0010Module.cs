@@ -1,4 +1,4 @@
-﻿namespace EtherCAT.Extension
+﻿namespace EtherCAT.NET.Extension
 {
     public enum EL6751_0010Module : ushort
     {

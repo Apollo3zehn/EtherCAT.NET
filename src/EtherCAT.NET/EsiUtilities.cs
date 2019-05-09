@@ -1,5 +1,5 @@
-﻿using EtherCAT.Infrastructure;
-using EtherCAT.Extension;
+﻿using EtherCAT.NET.Infrastructure;
+using EtherCAT.NET.Extension;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -8,7 +8,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using System.Xml.Serialization;
 
-namespace EtherCAT
+namespace EtherCAT.NET
 {
     public static class EsiUtilities
     {
@@ -24,7 +24,7 @@ namespace EtherCAT
         static EsiUtilities()
         {
             _lock = new object();
-            _cacheDirectoryPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "EtherCAT.NET", "ESI_Cache");
+            _cacheDirectoryPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "EtherCAT.NET", "Cache");
 
             Directory.CreateDirectory(_cacheDirectoryPath);
 
@@ -49,9 +49,9 @@ namespace EtherCAT
                 {
                     etherCatInfo = (EtherCATInfo)xmlSerializer.Deserialize(streamReader);
                 }
-                catch
+                catch (Exception ex)
                 {
-                    throw new Exception($"Could not open file {esiFileName}.");
+                    throw new Exception($"Could not open file {esiFileName}. Reason: {ex.Message}");
                 }
             }
 
@@ -78,9 +78,9 @@ namespace EtherCAT
                     {
                         xmlSerializer.Serialize(streamWriter, etherCATInfo);
                     }
-                    catch
+                    catch (Exception ex)
                     {
-                        throw new Exception($"Could not write file {esiFileName}.");
+                        throw new Exception($"Could not write file {esiFileName}. Reason: {ex.Message}");
                     }
                 }
             }
@@ -88,20 +88,48 @@ namespace EtherCAT
 
         private static void LoadEsiCache()
         {
-            IEnumerable<string> filePathSet;
+            List<EtherCATInfo> infoSet;
+            List<string> filePathSet;
 
-            filePathSet = EsiUtilities.EnumerateFiles(_cacheDirectoryPath, ".*", SearchOption.AllDirectories);
+            infoSet = new List<EtherCATInfo>();
+            filePathSet = EsiUtilities.EnumerateFiles(_cacheDirectoryPath, ".xml", SearchOption.AllDirectories).ToList();
 
-            EsiUtilities.CacheEtherCatInfoSet = filePathSet.ToList().Select(esiFilePath => EsiUtilities.LoadEsi(esiFilePath)).ToList();
+            foreach (var filePath in filePathSet)
+            {
+                try
+                {
+                    infoSet.Add(EsiUtilities.LoadEsi(filePath));
+                }
+                catch (Exception)
+                {
+                    // TODO: write warning into logger
+                }
+            }
+
+            EsiUtilities.CacheEtherCatInfoSet = infoSet;
         }
 
         private static void LoadEsiSource(string sourceDirectoryPath)
         {
-            IEnumerable<string> sourceFilePathSet;
+            List<EtherCATInfo> infoSet;
+            IEnumerable<string> filePathSet;
 
-            sourceFilePathSet = EsiUtilities.EnumerateFiles(sourceDirectoryPath, ".*", SearchOption.AllDirectories);
+            infoSet = new List<EtherCATInfo>();
+            filePathSet = EsiUtilities.EnumerateFiles(sourceDirectoryPath, ".xml", SearchOption.AllDirectories);
 
-            EsiUtilities.SourceEtherCatInfoSet = sourceFilePathSet.ToList().Select(esiFilePath => EsiUtilities.LoadEsi(esiFilePath)).ToList();
+            foreach (var filePath in filePathSet)
+            {
+                try
+                {
+                    infoSet.Add(EsiUtilities.LoadEsi(filePath));
+                }
+                catch (Exception)
+                {
+                    // TODO: write warning into logger
+                }
+            }
+
+            EsiUtilities.SourceEtherCatInfoSet = infoSet;
         }
 
         #endregion
@@ -261,7 +289,7 @@ namespace EtherCAT
                 }
 
                 // save new/updated EtherCATInfo to disk
-                EsiUtilities.SaveEsi(cacheInfo, Path.Combine(_cacheDirectoryPath, cacheInfo.Vendor.Id));
+                EsiUtilities.SaveEsi(cacheInfo, Path.Combine(_cacheDirectoryPath, $"{cacheInfo.Vendor.Id}.xml"));
             }
 
             // return

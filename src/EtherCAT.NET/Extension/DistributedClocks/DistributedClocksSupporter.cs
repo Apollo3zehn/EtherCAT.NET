@@ -1,10 +1,10 @@
-﻿//using EtherCAT.Infrastructure;
+﻿//using EtherCAT.NET.Infrastructure;
 //using EtherCAT.NET.Extensibility;
 //using OneDas.Extensibility;
 //using OneDas.Infrastructure;
 //using System;
 
-//namespace EtherCAT.Extension
+//namespace EtherCAT.NET.Extension
 //{
 //    public class DistributedClocksSupporter : IExtensionSupporter
 //    {

@@ -6,17 +6,16 @@ using System.Net.NetworkInformation;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
-using EtherCAT.Extensibility;
-using EtherCAT.Extension;
-using EtherCAT.Infrastructure;
 using EtherCAT.NET.Extensibility;
+using EtherCAT.NET.Extension;
+using EtherCAT.NET.Infrastructure;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using OneDas.Extensibility;
 using OneDas.Infrastructure;
 using SOEM.PInvoke;
 
-namespace EtherCAT
+namespace EtherCAT.NET
 {
     public class EcMaster : IDisposable
     {
@@ -259,15 +258,18 @@ namespace EtherCAT
             SlaveInfo actualSlaveInfo;
             IList<SlaveInfo> slaveInfoSet;
             IList<SlaveInfo> actualSlaveInfoSet;
+            NetworkInterface networkInterface;
 
-            if (NetworkInterface.GetAllNetworkInterfaces().Where(x => x.GetPhysicalAddress().ToString() == _settings.NicHardwareAddress).FirstOrDefault()?.OperationalStatus != OperationalStatus.Up)
+            networkInterface = NetworkInterface.GetAllNetworkInterfaces().Where(nic => nic.Name == _settings.InterfaceName).FirstOrDefault();
+
+            if (networkInterface?.OperationalStatus != OperationalStatus.Up)
             {
-                throw new Exception($"The targeted network interface with physical address { _settings.NicHardwareAddress } is not linked. Aborting action.");
+                throw new Exception($"Network interface '{_settings.InterfaceName}' is not linked. Aborting action.");
             }
 
             #region "PreOp"
 
-            actualSlaveInfo = EcUtilities.ScanDevices(this.Context, _settings.NicHardwareAddress, null);
+            actualSlaveInfo = EcUtilities.ScanDevices(this.Context, _settings.InterfaceName, null);
 
             if (rootSlaveInfo == null)
             {

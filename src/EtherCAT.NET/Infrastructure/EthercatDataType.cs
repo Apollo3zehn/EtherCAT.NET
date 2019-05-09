@@ -1,4 +1,4 @@
-﻿namespace EtherCAT.Infrastructure
+﻿namespace EtherCAT.NET.Infrastructure
 {
     public enum EthercatDataType
     {

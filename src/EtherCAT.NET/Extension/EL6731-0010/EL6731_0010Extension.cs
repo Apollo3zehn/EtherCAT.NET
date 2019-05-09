@@ -1,10 +1,10 @@
-﻿using EtherCAT.Extensibility;
-using EtherCAT.Infrastructure;
+﻿using EtherCAT.NET.Extensibility;
+using EtherCAT.NET.Infrastructure;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace EtherCAT.Extension
+namespace EtherCAT.NET.Extension
 {
     public class EL6731_0010Extension : SlaveExtensionLogic
     {

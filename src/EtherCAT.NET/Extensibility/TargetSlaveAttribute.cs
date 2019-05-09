@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace EtherCAT.Extensibility
+namespace EtherCAT.NET.Extensibility
 {
     [AttributeUsage(validOn: AttributeTargets.Class, AllowMultiple = true)]
     public class TargetSlaveAttribute : Attribute

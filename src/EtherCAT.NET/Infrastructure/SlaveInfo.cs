@@ -1,11 +1,11 @@
-﻿using EtherCAT.Extensibility;
+﻿using EtherCAT.NET.Extensibility;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.Linq;
 using System.Runtime.Serialization;
 
-namespace EtherCAT.Infrastructure
+namespace EtherCAT.NET.Infrastructure
 {
     /// <summary>
     /// Represents an EtherCAT slave.

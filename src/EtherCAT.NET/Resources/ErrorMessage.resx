@@ -141,15 +141,19 @@
   <data name="Native_0x0101" xml:space="preserve">
     <value>The adapter could not be initialized. Possible reasons are:
 
+Windows: 
 - WinPcap is not installed
-- disabled network interface
-- TwinCAT claimed the adapter</value>
+- network interface is disabled
+- TwinCAT blocks the network interface
+
+Linux: 
+- The application is not running as root.</value>
   </data>
   <data name="Native_0x0102" xml:space="preserve">
     <value>Could not disable process data watchdog.</value>
   </data>
   <data name="Native_0x0103" xml:space="preserve">
-    <value>Could not detect any slaves. Possible cause is a running TwinCAT instance which blocks the NIC.</value>
+    <value>Could not detect any slaves. On Windows, a possible cause is a running TwinCAT instance which blocks the network interface.</value>
   </data>
   <data name="Native_0x0200" xml:space="preserve">
     <value>ConfigureIoMap()</value>
@@ -227,6 +231,6 @@
     <value>The ID must be greater zero.</value>
   </data>
   <data name="SoemWrapper_NetworkInterfaceNotFound" xml:space="preserve">
-    <value>No corresponding network interface could be found.</value>
+    <value>The specified network interface could not be found.</value>
   </data>
 </root>

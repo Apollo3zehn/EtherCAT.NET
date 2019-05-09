@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace EtherCAT.Infrastructure
+namespace EtherCAT.NET.Infrastructure
 {
     public struct SdoWriteRequest
     {
