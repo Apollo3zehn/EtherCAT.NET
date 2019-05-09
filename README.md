@@ -2,57 +2,33 @@
 
 [![AppVeyor](https://ci.appveyor.com/api/projects/status/github/apollo3zehn/ethercat.net?svg=true)](https://ci.appveyor.com/project/Apollo3zehn/ethercat-net)
 
-> **WARNING**: The current package contains no Linux libs since AppVeyor has not yet updated to Visual Studio 2019 and .NET Core 3.0 preview 4.
+> **WARNING**: The current package contains no Linux libs since AppVeyor has not yet updated to Visual Studio 2019 and .NET Core 3.0 preview 5.
 
 A large amount of the logic of EtherCAT.NET comes from the data acquisition software [OneDAS](https://github.com/OneDAS-Group/OneDAS-Core), where the master has been extensively tested on many slaves from Beckhoff, Gantner and Anybus. Due to the effort to reduce protocol specific logic within OneDAS and to allow standalone use of the EtherCAT master, EtherCAT.NET was born. 
 
 EtherCAT.NET itself provides high-level abstraction of the underlying native *Simple Open Source EtherCAT Master* ([SOEM](https://github.com/OpenEtherCATsociety/soem)). To accomplish this, the solution contains another project: SOEM.PInvoke. It comprises the actual native libraries for Windows and Linux and allows to simply P/Invoke into the native SOEM methods. The intention is to provide a managed way to access the native SOEM master. EtherCAT.NET depends on SOEM.PInvoke and adds classes for high-level abstraction.
 
-In its current state, many, but not all planned features are already implemented. Thus only an alpha version is available ([NuGet](https://www.nuget.org/packages/EtherCAT.NET)) up to now. This mainly means that any EtherCAT network can be configured and started, but high-level features like simple configuration of the SDOs are not yet implemented. 
+In its current state, many, but not all planned features are implemented. Thus, only an alpha version is available ([NuGet](https://www.nuget.org/packages/EtherCAT.NET)) up to now. This mainly means that any EtherCAT network can be configured and started, but high-level features like simple configuration of the SDOs are not yet implemented. 
 
 This master already supports slave configuration via ESI files. In fact, these files are *required* for the master to work. As shown in the [sample](sample/SampleMaster), you need to point the configuration to the folder, where the ESI files live.
 
-Another feature is the configuration of complex slaves. For example, this master has been sucessfully tested with the Profibus terminal (```EL6731-0010```). TwinCAT allows confguration of this terminal through a special configuration page. Since creating high-level configuration interfaces for each complex slave is much work, the priority for EtherCAT.NET lies on providing a simple interface to customize SDOs (like in TwinCAT), so that the end user can tune the required settings for any slave in a generic way. 
+Another feature is the configuration of complex slaves. For example, this master has been sucessfully tested with the Profibus terminal (```EL6731-0010```). TwinCAT allows configuration of this terminal through a special configuration page. Since creating high-level configuration interfaces for each complex slave is much work, the priority for EtherCAT.NET lies on providing a simple interface to customize SDOs (like in TwinCAT), so that the end user can tune the required settings for any slave in a generic way. 
 
-## Prerequisites (at runtime)
+## Running the application
 
-* WinPcap (on Windows)
+> **Linux**: Run the application with root privileges as pointed out [here](https://github.com/OpenEtherCATsociety/SOEM/blob/8832ef0f2fa09fb0b06acaca239b51263ca1878c/doc/soem.dox#L20).
 
-## Building the solution
-
-You need the following tools to build the solution:
-
-* Visual Studio 2019 (on Windows)
-* PowerShell Core
-* CMake
-
-It can then be built as follows:
-
-1. Execute the `init_solution.ps1` script once within the root folder with PowerShell Core.
-    On Windows, if you don't want to install Powershell Core, you can adapt the script and replace ```$IsWindows``` with ```$true```.
-2. On Windows, run*:
-    ```
-    msbuild ./artifacts/bin32/SOEM_wrapper/soem_wrapper.vcxproj /p:Configuration=Release
-    msbuild ./artifacts/bin64/SOEM_wrapper/soem_wrapper.vcxproj /p:Configuration=Release
-    ```
-    (* use Visual Studio command prompt if ```msbuild``` is not available in the ```PATH``` variable).
-3. On Linux, run:
-    ```
-    make --directory ./artifacts/bin32
-    make --directory ./artifacts/bin64
-    ```
-4. Run ```dotnet build ./src/EtherCAT.NET/EtherCAT.NET.csproj```.
-5. Find the resulting packages in ```./artifacts/packages/*```.
+> **Windows**: Install [WinPcap](https://www.winpcap.org/).
 
 ## How to use EtherCAT.NET
 
-If you start with the [sample](https://github.com/Apollo3zehn/EtherCAT.NET/tree/master/sample/SampleMaster), make sure to adapt the hardware address (```Properties -> launchSettings.json```) to that of your network interface adapter. When you run the sample application, the output will be similar to the following:
+If you start with the [sample](https://github.com/Apollo3zehn/EtherCAT.NET/tree/master/sample/SampleMaster), make sure to adapt the interface name in ```Program.cs``` to that of your network adapter and to populate the ESI directory with the required ESI files. When you run the sample application, the output will be similar to the following:
 
 ![sample-master](https://user-images.githubusercontent.com/20972129/57144734-01a22f80-6dc2-11e9-9b8a-f32d5a8d7b2f.png)
 
 ### Generate the list of slaves
 
-The master can be operated without having a list of slaves. In that case, it scans available slaves during startup. But the disadvantage is that no settings to slaves can be made in advance and that no variable references are available. Therefore, there are two ways to generate the slave list as shown here:
+The master can be operated without having a list of slaves. In that case, it scans available slaves during startup. But the disadvantage is that the slaves cannot be configured in advance and that no variable references are available. Therefore, there are two ways to generate the slave list as shown here:
 
 1. Create the list manually (it must match with the actually connected slaves)
     ```
@@ -60,10 +36,10 @@ The master can be operated without having a list of slaves. In that case, it sca
     ```
 2. Scan the list of connected slaves
     ```cs
-    var rootSlaveInfo = EcUtilities.ScanDevices(<your NIC address>); // eg. 42-10-1C-2F-0F-50 without dashes
+    var rootSlaveInfo = EcUtilities.ScanDevices(<network interface name>);
     ```
 
-The returned object (```rootSlaveInfo```) is the master itself, which holds child slaves in its ```SlaveInfoSet``` property)
+The returned ```rootSlaveInfo``` is the master itself, which holds child slaves in its ```SlaveInfoSet``` property)
 After that, the found slaves should be populated with ESI information:
 
 ```cs
@@ -92,7 +68,7 @@ slaves.ForEach(current =>
 logger.LogInformation(message.ToString().TrimEnd());
 ```
 
-Now, if the hardware slave order is changed, the individual slaves can then be identified by:
+Now, if the hardware slave order is changed, the individual slaves can be identified by:
 
 ```cs
 var slaves = rootSlaveInfo.Descendants().ToList();
@@ -131,11 +107,11 @@ unsafe
 }
 ```
 
-Be careful using raw pointers, to not access data outside the array.
+Be careful when using raw pointers, so that you do not modify data outside the array boundaries.
 
 ### Running the master
 
-First, an ```EcSettings``` object must be created. The constructor takes the parameters ```cycleFrequency```, ```esiDirectoryPath``` and ```interfaceName```. The first one specifies the cycle time of the master and is important for distributed clock configuration. The last one, ```interfaceName```, is the Name of your network interface (e.g. ```eth0```).
+First, an ```EcSettings``` object must be created. The constructor takes the parameters ```cycleFrequency```, ```esiDirectoryPath``` and ```interfaceName```. The first one specifies the cycle time of the master and is important for distributed clock configuration. The last one, ```interfaceName```, is the name of your network adapter.
 
 The ```esiDirectoryPath``` parameter contains a path to a folder containing the ESI files. For Beckhoff slaves, these can be downloaded [here](https://www.beckhoff.de/default.asp?download/elconfg.htm). 
 The first startup may take a while since an ESI cache is built to speed-up subsequent starts. Whenever a new and unknown slave is added, this cache is rebuilt.
@@ -164,9 +140,9 @@ var interval = TimeSpan.FromMilliseconds(100);
 var timeShift = TimeSpan.Zero;
 var timer = new RtTimer();
 
-using (var master = new EcMaster(rootSlaveInfo, settings, extensionFactory, logger))
+using (var master = new EcMaster(settings, extensionFactory, logger))
 {
-    master.Configure();
+    master.Configure(rootSlaveInfo);
     timer.Start(interval, timeShift, UpdateIO);
 
     void UpdateIO()
@@ -180,3 +156,61 @@ using (var master = new EcMaster(rootSlaveInfo, settings, extensionFactory, logg
 }
 
 ```
+
+## Compiling the application
+
+A single Powershell *Core* script is used for all platforms to initialize the solution. This simplifies CI builds - but requires Powershell Core to be available on the target system. If you don't want to install it, you can extract the information in the script and perform the steps manually.   
+
+### Linux (tested on Ubuntu 18.04 x64)
+
+You need the following tools:
+
+* [.NET Core 3.0 Preview 5](https://dotnet.microsoft.com/download/dotnet-core/3.0)
+* [PowerShell Core](https://docs.microsoft.com/en-us/powershell/scripting/install/installing-powershell-core-on-linux?view=powershell-6)
+* [build-essential](https://packages.debian.org/de/sid/build-essential)
+* [g++-multilib](https://packages.debian.org/de/sid/g++-multilib)
+* [CMake](https://cmake.org)
+
+The solution can then be built as follows:
+
+1. Execute the powershell script once within the root folder:
+    ```
+    pwsh ./init_solution.ps1
+    ```
+2. Run ```make``` everytime you make changes to the native code:
+    ```
+    make --directory ./artifacts/bin32
+    make --directory ./artifacts/bin64
+    ```
+3. Run ```dotnet build``` everytime make changes to the managed code: 
+    ```
+    dotnet build ./src/EtherCAT.NET/EtherCAT.NET.csproj
+    ```
+4. Find the resulting packages in ```./artifacts/packages/*```.
+
+### Windows
+
+You need the following tools:
+
+* [.NET Core 3.0 Preview 5](https://dotnet.microsoft.com/download/dotnet-core/3.0)
+* [PowerShell Core](https://docs.microsoft.com/en-us/powershell/scripting/install/installing-powershell-core-on-windows?view=powershell-6)
+* [Visual Studio 2019](https://visualstudio.microsoft.com)
+* [CMake](https://cmake.org)
+
+The solution can then be built as follows:
+
+1. Execute the powershell script once within the root folder. If you don't want to install Powershell Core, you can adapt the script and replace ```$IsWindows``` with ```$true```.
+    ```
+    ./init_solution.ps1
+    ```
+2. Run ```msbuild```* everytime you make changes to the native code:
+    ```
+    msbuild ./artifacts/bin32/SOEM_wrapper/soem_wrapper.vcxproj /p:Configuration=Release
+    msbuild ./artifacts/bin64/SOEM_wrapper/soem_wrapper.vcxproj /p:Configuration=Release
+    ```
+    (* use Visual Studio Developer Command Prompt if ```msbuild``` is not available in the ```PATH``` variable or compile using Visual Studio directly).
+3. Run ```dotnet build``` everytime you make changes to the managed code: 
+    ```
+    dotnet build ./src/EtherCAT.NET/EtherCAT.NET.csproj
+    ```
+4. Find the resulting packages in ```./artifacts/packages/*```.
