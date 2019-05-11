@@ -43,6 +43,7 @@ namespace EtherCAT.NET
 
         // timing
         private long _dcTime;
+        private TimeSpan _offset;
 
         // diagnostics
         private int _counter;
@@ -372,6 +373,12 @@ namespace EtherCAT.NET
 
                 // the UpdateIo timer tries to fire at discrete times. The timer is allowed to be early or delayed by < (CycleTime - Offset) and the resulting DC time will be floored to nearest 10 ms. 
                 this.UtcDateTime = _dcEpoch.AddTicks(Convert.ToInt64(_dcTime / _dateTime_To_Ns));  // for time loop control
+
+                // for compensation, if DC is not initialized with real time or not initialized at all
+                if (_offset == TimeSpan.Zero)
+                    _offset = referenceDateTime - this.UtcDateTime;
+                else
+                    this.UtcDateTime += _offset;
 
                 // dc drift compensation
                 _dcRingBuffer[_dcRingBufferIndex] = Convert.ToInt64(referenceDateTime.Ticks - this.UtcDateTime.Ticks) * _dateTime_To_Ns;
