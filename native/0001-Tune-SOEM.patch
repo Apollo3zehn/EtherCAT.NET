@@ -1,13 +1,12 @@
-From bfd2b54a767584d2c1ce34ab5389d659678fb9ce Mon Sep 17 00:00:00 2001
-From: Apollo3zehn <vwilms@outlook.com>
-Date: Sat, 13 Apr 2019 19:27:26 +0200
-Subject: [PATCH] Tune SOEM.
+From 8a989967597e8fd0b79e14aef006c868c194a958 Mon Sep 17 00:00:00 2001
+From: Vincent Wilms <vwilms@outlook.com>
+Date: Sat, 11 May 2019 09:53:55 +0200
+Subject: [PATCH] Tune-SOEM
 
 ---
- CMakeLists.txt      |  2 +-
- osal/win32/osal.c   | 20 +++++++++++++++++++-
- soem/ethercattype.h |  2 +-
- 3 files changed, 21 insertions(+), 3 deletions(-)
+ CMakeLists.txt      | 2 +-
+ soem/ethercattype.h | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/CMakeLists.txt b/CMakeLists.txt
 index d74604b..7474b5d 100644
@@ -22,49 +21,11 @@ index d74604b..7474b5d 100644
  
  if(WIN32)
    set(OS "win32")
-diff --git a/osal/win32/osal.c b/osal/win32/osal.c
-index 2e320f8..0473a0c 100644
---- a/osal/win32/osal.c
-+++ b/osal/win32/osal.c
-@@ -12,6 +12,24 @@ static double qpc2usec;
- 
- #define USECS_PER_SEC     1000000
- 
-+int osal_getabsolutetimeofday(struct timeval *tv, struct timezone *tz)
-+{
-+	FILETIME systemTime;
-+	int64 systemTime64, usecs;
-+	int64 offset = -134774LL * 86400LL * 1000LL * 1000LL * 10LL; // Difference between 1601 and 1970 in 100 ns.
-+
-+	GetSystemTimeAsFileTime(&systemTime);
-+
-+	systemTime64 = ((int64)(systemTime.dwHighDateTime) << 32) + (int64)systemTime.dwLowDateTime;
-+	systemTime64 = systemTime64 + offset;
-+	usecs = systemTime64 / 10;
-+
-+	tv->tv_sec = (long)(usecs / 1000000);
-+	tv->tv_usec = (long)(usecs - (tv->tv_sec * 1000000));
-+
-+	return 1;
-+}
-+
- int osal_gettimeofday (struct timeval *tv, struct timezone *tz)
- {
-    int64_t wintime, usecs;
-@@ -34,7 +52,7 @@ ec_timet osal_current_time (void)
-    struct timeval current_time;
-    ec_timet return_value;
- 
--   osal_gettimeofday (&current_time, 0);
-+   osal_getabsolutetimeofday(&current_time, 0);
-    return_value.sec = current_time.tv_sec;
-    return_value.usec = current_time.tv_usec;
-    return return_value;
 diff --git a/soem/ethercattype.h b/soem/ethercattype.h
-index 1881df3..0a680f0 100644
+index 86df704..23535a9 100644
 --- a/soem/ethercattype.h
 +++ b/soem/ethercattype.h
-@@ -28,7 +28,7 @@ extern "C"
+@@ -25,7 +25,7 @@ extern "C"
  
  /** define EC_VER1 if version 1 default context and functions are needed
   * comment if application uses only ecx_ functions and own context */
@@ -74,5 +35,5 @@ index 1881df3..0a680f0 100644
  #include "osal.h"
  
 -- 
-2.19.2.windows.1
+2.21.0.windows.1
 
