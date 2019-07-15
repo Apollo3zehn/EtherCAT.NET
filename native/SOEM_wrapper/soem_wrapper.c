@@ -19,6 +19,8 @@
 #include <stdlib.h>
 #include "soem_wrapper.h"
 
+#define EC_VER2
+
 // private
 int _referenceSlave;
 
@@ -329,7 +331,7 @@ int CALLCONV GetSyncManagerType(ecx_contextt* context, uint16 slaveIndex, uint16
 
 int CALLCONV RequestOpState(ecx_contextt* context)
 {
-	int counter = 40;
+	int counter = 200;
 
 	context->slavelist[0].state = EC_STATE_OPERATIONAL;
 
@@ -342,7 +344,7 @@ int CALLCONV RequestOpState(ecx_contextt* context)
 	{
 		ecx_send_processdata(context);
 		ecx_receive_processdata(context, EC_TIMEOUTRET);
-		ecx_statecheck(context, 0, EC_STATE_OPERATIONAL, 50000);
+		ecx_statecheck(context, 0, EC_STATE_OPERATIONAL, 5 * EC_TIMEOUTSTATE);
 	} while (counter-- && (context->slavelist[0].state != EC_STATE_OPERATIONAL));
 
 	return context->slavelist[0].state == EC_STATE_OPERATIONAL ? 1 : -0x0601;
@@ -350,7 +352,7 @@ int CALLCONV RequestOpState(ecx_contextt* context)
 
 int CALLCONV CheckSafeOpState(ecx_contextt* context)
 {
-	ecx_statecheck(context, 0, EC_STATE_SAFE_OP, EC_TIMEOUTSTATE * 4);
+	ecx_statecheck(context, 0, EC_STATE_SAFE_OP, EC_TIMEOUTSTATE);
 
 	return context->slavelist[0].state == EC_STATE_SAFE_OP ? 1 : -0x0501;
 }
