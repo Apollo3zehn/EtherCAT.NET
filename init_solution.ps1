@@ -1,13 +1,6 @@
 Write-Host "Updating Git submodule."
 git submodule update --init --recursive --quiet
 
-Write-Host "Apply patch to SOEM."
-$path = "$($PSScriptRoot)/native/SOEM"
-Set-Location -Path $path
-git apply --stat ./../0001-Tune-SOEM.patch
-git apply --check ./../0001-Tune-SOEM.patch
-git apply ./../0001-Tune-SOEM.patch
-
 # x86
 Write-Host "Creating native x86 project."
 $path = "$($PSScriptRoot)/artifacts/bin32"
