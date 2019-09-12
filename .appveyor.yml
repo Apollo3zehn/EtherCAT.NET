@@ -34,7 +34,7 @@ before_build:
 - ps: dotnet --info
 - ps: "Get-ChildItem Env:"
 - ps: ./init_solution.ps1
-- ps: Import-module ./build/Start-ArtifactDownload.ps1 -Force
+- ps: Import-Module ./build/Start-ArtifactDownload.ps1 -Force
 - ps: | 
     if ($isWindows) 
     { 
