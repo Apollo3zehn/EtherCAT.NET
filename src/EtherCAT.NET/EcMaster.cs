@@ -472,7 +472,15 @@ namespace EtherCAT.NET
                 }
 
                 _cts?.Cancel();
-                _watchdogTask?.Wait();
+
+                try
+                {
+                    _watchdogTask?.Wait();
+                }
+                catch (Exception ex) when (ex.InnerException.GetType() == typeof(TaskCanceledException))
+                {
+                    //
+                }
 
                 if (this.Context != IntPtr.Zero)
                 {
