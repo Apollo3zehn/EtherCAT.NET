@@ -8,6 +8,10 @@
 
   <ItemGroup>
     <PackageReference Include="OneDas.Types" Version="1.0.0-alpha.2.171" />
+    
+    <!-- required until OneDas.Types dependency is up to date -->
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="3.1.2" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="3.1.2" />
   </ItemGroup>
 
   <ItemGroup>
