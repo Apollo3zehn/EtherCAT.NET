@@ -20,4 +20,11 @@
     <ProjectReference Include="..\..\src\EtherCAT.NET\EtherCAT.NET.csproj" />
   </ItemGroup>
 
+  <!-- workaround https://github.com/dotnet/sdk/issues/10273#issuecomment-499988244 -->
+  <Target Name="WorkaroundNetStandard" AfterTargets="ResolvePackageAssets">
+    <ItemGroup>
+      <TransitiveFrameworkReference Remove="NETStandard.Library" />
+    </ItemGroup>
+  </Target>
+
 </Project>

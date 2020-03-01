@@ -4,6 +4,7 @@
     <Description>A high-level SOEM-based EtherCAT master with ESI support for Windows and Linux.</Description>
     <PackageTags>SOEM EtherCAT PInvoke CSharp .NETStandard Windows Linux</PackageTags>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <TargetFramework>netstandard2.0</TargetFramework>
   </PropertyGroup>
 
   <ItemGroup>
@@ -43,5 +44,5 @@
       <CustomToolNamespace>EtherCAT</CustomToolNamespace>
     </EmbeddedResource>
   </ItemGroup>
-  
+
 </Project>
