@@ -69,8 +69,13 @@ after_build:
       Push-AppveyorArtifact "./artifacts/bin64/SOEM_wrapper/$env:FileName" -FileName "lib64"
     }
 
+# On Windows, WinPcap is probably missing
 test_script:
-- ps: dotnet test ./tests/EtherCAT.NET.Tests -c $Env:CONFIGURATION /p:BuildProjectReferences=false
+- ps: |
+    if ($isLinux) 
+    { 
+      dotnet test ./tests/EtherCAT.NET.Tests -c $Env:CONFIGURATION /p:BuildProjectReferences=false
+    }
 
 artifacts:
   - path: ./artifacts/packages/**/*.nupkg
