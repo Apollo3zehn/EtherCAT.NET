@@ -1,8 +1,6 @@
 # EtherCAT.NET
 
-[![AppVeyor](https://ci.appveyor.com/api/projects/status/github/apollo3zehn/ethercat.net?svg=true)](https://ci.appveyor.com/project/Apollo3zehn/ethercat-net)
-
-> **WARNING**: The current package contains no Linux libs since AppVeyor has not yet updated to Visual Studio 2019 and .NET Core 3.0 preview 5.
+[![AppVeyor](https://ci.appveyor.com/api/projects/status/github/apollo3zehn/ethercat.net?svg=true&branch=master)](https://ci.appveyor.com/project/Apollo3zehn/ethercat-net)
 
 A large amount of the logic of EtherCAT.NET comes from the data acquisition software [OneDAS](https://github.com/OneDAS-Group/OneDAS-Core), where the master has been extensively tested on many slaves from Beckhoff, Gantner and Anybus. Due to the effort to reduce protocol specific logic within OneDAS and to allow standalone use of the EtherCAT master, EtherCAT.NET was born. 
 
@@ -165,7 +163,7 @@ A single Powershell *Core* script is used for all platforms to initialize the so
 
 You need the following tools:
 
-* [.NET Core 3.0 Preview 5](https://dotnet.microsoft.com/download/dotnet-core/3.0)
+* [.NET Core 3.1](https://dotnet.microsoft.com/download/dotnet-core/3.1)
 * [PowerShell Core](https://docs.microsoft.com/en-us/powershell/scripting/install/installing-powershell-core-on-linux?view=powershell-6)
 * [build-essential](https://packages.debian.org/de/sid/build-essential)
 * [g++-multilib](https://packages.debian.org/de/sid/g++-multilib)
@@ -192,7 +190,7 @@ The solution can then be built as follows:
 
 You need the following tools:
 
-* [.NET Core 3.0 Preview 5](https://dotnet.microsoft.com/download/dotnet-core/3.0)
+* [.NET Core 3.1](https://dotnet.microsoft.com/download/dotnet-core/3.1)
 * [PowerShell Core](https://docs.microsoft.com/en-us/powershell/scripting/install/installing-powershell-core-on-windows?view=powershell-6)
 * [Visual Studio 2019](https://visualstudio.microsoft.com)
 * [CMake](https://cmake.org)

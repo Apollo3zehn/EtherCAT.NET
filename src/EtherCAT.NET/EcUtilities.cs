@@ -202,7 +202,7 @@ namespace EtherCAT.NET
             }
 
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-                interfaceName = $@"rpcap://\Device\NPF_{ networkInterface.Id }";
+                interfaceName = $@"rpcap://\Device\NPF_{networkInterface.Id}";
             else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
                 interfaceName = $"{interfaceName}";
             else

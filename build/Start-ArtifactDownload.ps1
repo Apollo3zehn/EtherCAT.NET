@@ -26,6 +26,6 @@ function Start-ArtifactDownload([string]$jobName, [string]$sourceFileName, [stri
     }
     catch 
     {
-        throw "Could not download file `"$sourceFileName`" with target file name `"$targetFilePath`"."
+        throw "Could not download file `"$sourceFileName`" with target file path `"$targetFilePath`"."
     }
 }

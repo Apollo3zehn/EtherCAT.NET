@@ -4,6 +4,7 @@
     <Description>A .NETStandard wrapper around the Simple Open Source EtherCAT Master (SOEM).</Description>
     <PackageTags>SOEM EtherCAT PInvoke CSharp .NETStandard Windows Linux</PackageTags>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <TargetFramework>netstandard2.0</TargetFramework>
   </PropertyGroup>
 
   <PropertyGroup>
