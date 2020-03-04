@@ -558,8 +558,12 @@ int CALLCONV ScanDevices(ecx_contextt* context, char* interfaceName, ec_slave_in
 
 		for (int slaveIndex = 1; slaveIndex < *context->slavecount + 1; slaveIndex++)
 		{
-			// clear watchdog trigger enable in SM2 control register
-			context->slavelist[slaveIndex].SM[2].SMflags &= ~0x40;
+			// clear watchdog trigger enable in SM control register
+			for (int i = 0; i < EC_MAXSM; i++)
+			{
+				if (context->slavelist[slaveIndex].SMtype[i] == 3)
+					context->slavelist[slaveIndex].SM[i].SMflags &= ~0x40;
+			}
 
 			// clear watchdog time process data register
 			if (!(wkc = ecx_FPWR(context->port, context->slavelist[slaveIndex].configadr, 0x420, sizeof(watchdogTime), &watchdogTime, EC_TIMEOUTRET)))
