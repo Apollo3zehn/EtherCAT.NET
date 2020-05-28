@@ -1,4 +1,4 @@
-﻿using EtherCAT.NET.Infrastructure;
+using EtherCAT.NET.Infrastructure;
 using EtherCAT.NET.Extension;
 using System;
 using System.Collections.Generic;
@@ -158,7 +158,7 @@ namespace EtherCAT.NET
             {
                 uint vendorId;
 
-                vendorId = uint.Parse(currentInfo.Vendor.Id.Replace("#x", string.Empty), NumberStyles.HexNumber);
+                vendorId = (uint)EsiUtilities.ParseHexDecString(currentInfo.Vendor.Id);
 
                 if (vendorId != manufacturer)
                 {
@@ -171,8 +171,8 @@ namespace EtherCAT.NET
 
                     found = !string.IsNullOrWhiteSpace(currentDevice.Type.ProductCode) &&
                             !string.IsNullOrWhiteSpace(currentDevice.Type.RevisionNo) &&
-                             Int32.Parse(currentDevice.Type.ProductCode.Substring(2), NumberStyles.HexNumber) == productCode &&
-                             Int32.Parse(currentDevice.Type.RevisionNo.Substring(2), NumberStyles.HexNumber) == revision;
+                             (int)EsiUtilities.ParseHexDecString(currentDevice.Type.ProductCode) == productCode &&
+                             (int)EsiUtilities.ParseHexDecString(currentDevice.Type.RevisionNo) == revision;
 
                     if (found)
                     {
@@ -195,11 +195,11 @@ namespace EtherCAT.NET
                 {
                     device = currentInfo.Descriptions.Devices.Where(currentDevice =>
                     {
-                        bool found;
+                        var found = !string.IsNullOrWhiteSpace(currentDevice.Type.ProductCode) && 
 
                         found = !string.IsNullOrWhiteSpace(currentDevice.Type.ProductCode) && 
-                                !string.IsNullOrWhiteSpace(currentDevice.Type.RevisionNo) &&
-                                 Int32.Parse(currentDevice.Type.ProductCode.Substring(2), NumberStyles.HexNumber) == productCode;
+                                    !string.IsNullOrWhiteSpace(currentDevice.Type.RevisionNo) &&
+                                     (int)EsiUtilities.ParseHexDecString(currentDevice.Type.ProductCode) == productCode;
 
                         if (found)
                         {
@@ -254,7 +254,7 @@ namespace EtherCAT.NET
                 // find matching EtherCATInfo in cache
                 cacheInfo = EsiUtilities.CacheEtherCatInfoSet.FirstOrDefault(current =>
                 {
-                    uint vendorId;
+                    var vendorId = (uint)EsiUtilities.ParseHexDecString(current.Vendor.Id);
 
                     vendorId = current.Vendor.Id.Length > 2 ? uint.Parse(current.Vendor.Id.Substring(2), NumberStyles.HexNumber) : uint.Parse(current.Vendor.Id, NumberStyles.HexNumber);
                     return vendorId == manufacturer;

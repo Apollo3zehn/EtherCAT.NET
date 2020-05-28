@@ -1,4 +1,4 @@
-﻿using EtherCAT.NET.Infrastructure;
+using EtherCAT.NET.Infrastructure;
 using System;
 using System.Globalization;
 using System.Runtime.Serialization;
@@ -10,7 +10,7 @@ namespace EtherCAT.NET.Extension
     {
         public DistributedClocksOpMode(DeviceTypeDCOpMode opMode)
         {
-            int assignActivate;
+            var assignActivate = EsiUtilities.ParseHexDecString(opMode.AssignActivate);
 
             assignActivate = Int32.Parse(opMode.AssignActivate.Substring(2), NumberStyles.HexNumber);
 

@@ -1,4 +1,4 @@
-﻿using EtherCAT.NET.Extensibility;
+using EtherCAT.NET.Extensibility;
 using EtherCAT.NET.Infrastructure;
 using OneDas.Extensibility;
 using System;
@@ -51,8 +51,8 @@ namespace EtherCAT.NET.Extension
 
                     foreach (DeviceTypeDCOpModeSMPdo smPdo in syncManagerPdoSet.Pdo)
                     {
-                        ushort index = ushort.Parse(smPdo.Value.Substring(2), NumberStyles.HexNumber);
-                        ushort currentOsFactor = Convert.ToUInt16(smPdo.OSFacSpecified ? smPdo.OSFac : 1);
+                        var index = (ushort)EsiUtilities.ParseHexDecString(smPdo.Value);
+                        var currentOsFactor = (ushort)(smPdo.OSFacSpecified ? smPdo.OSFac : 1);
 
                         for (ushort osFactorIndex = 1; osFactorIndex <= currentOsFactor; osFactorIndex++)
                         {
@@ -82,7 +82,7 @@ namespace EtherCAT.NET.Extension
 
             if (dcOpMode != null)
             {
-                int assignActivate_Tmp = Int32.Parse(dcOpMode.AssignActivate.Substring(2), NumberStyles.HexNumber);
+                var assignActivate_Tmp = (int)EsiUtilities.ParseHexDecString(dcOpMode.AssignActivate);
 
                 if (assignActivate_Tmp == 0)
                 {
