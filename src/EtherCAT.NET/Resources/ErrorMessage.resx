@@ -165,7 +165,7 @@ Linux:
     <value>No slave supports distributed clocks.</value>
   </data>
   <data name="Native_0x0302" xml:space="preserve">
-    <value>The static drift compensation for distributed clocks failed.</value>
+    <value>The static drift compensation for distributed clocks failed. Consider increasing the TargetTimeDifference in the EcSettings object.</value>
   </data>
   <data name="Native_0x0400" xml:space="preserve">
     <value>ConfigureSync01()</value>
