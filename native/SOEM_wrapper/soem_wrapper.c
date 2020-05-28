@@ -485,7 +485,25 @@ int CALLCONV SdoWrite(ecx_contextt* context, uint16 slaveIndex, uint16 sdoIndex,
 			totalByteCount += byteCountSet[i];
 		}
 
-		returnValue += ecx_SDOwrite(context, slaveIndex, sdoIndex, sdoSubIndex, TRUE, totalByteCount, dataset, timeout);
+		// Clause 12.2 of the ETG.1020 specification, sub-point 1 "SDO Complete Access" -> Subindex 0 is padded to 16 bits
+		if (sdoSubIndex == 0)
+		{
+			uint8* datasetPadded = calloc(totalByteCount + 1, 1);
+			
+			datasetPadded[0] = dataset[0];
+
+			for (int i = 1; i < totalByteCount; i++)
+			{
+				datasetPadded[i + 1] = dataset[i];
+			}
+
+			returnValue += ecx_SDOwrite(context, slaveIndex, sdoIndex, sdoSubIndex, TRUE, totalByteCount + 1, datasetPadded, timeout);
+			free(datasetPadded);
+		}
+		else
+		{
+			returnValue += ecx_SDOwrite(context, slaveIndex, sdoIndex, sdoSubIndex, TRUE, totalByteCount, dataset, timeout);
+		}
 
 		return returnValue == 1 ? 1 : 0;
 	}

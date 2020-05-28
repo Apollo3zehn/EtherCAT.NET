@@ -61,21 +61,16 @@ namespace EtherCAT.NET.Extensibility
                 foreach (PdoType pdoType in pdoTypeSet)
                 {
                     int syncManager;
-
-                    ushort osMax;
                     ushort pdoIndex;
-                    ushort indexOffset_Tmp;
-
                     string pdoName;
-
                     SlavePdo slavePdo;
 
-                    osMax = Convert.ToUInt16(pdoType.OSMax);
+                    var osMax = Convert.ToUInt16(pdoType.OSMax);
 
                     if (osMax == 0)
                     {
                         pdoName = pdoType.Name.First().Value;
-                        pdoIndex = ushort.Parse(pdoType.Index.Value.Substring(2), NumberStyles.HexNumber);
+                        pdoIndex = (ushort)EsiUtilities.ParseHexDecString(pdoType.Index.Value);
                         syncManager = pdoType.SmSpecified ? pdoType.Sm : -1;
 
                         slavePdo = new SlavePdo(slaveInfo, pdoName, pdoIndex, osMax, pdoType.Fixed, pdoType.Mandatory, syncManager);
@@ -84,8 +79,8 @@ namespace EtherCAT.NET.Extensibility
 
                         IList<SlaveVariable> slaveVariableSet = pdoType.Entry.Select(x =>
                         {
-                            ushort variableIndex = ushort.Parse(x.Index.Value.Substring(2), NumberStyles.HexNumber);
-                            byte subIndex = Convert.ToByte(Convert.ToByte(x.SubIndex));
+                            var variableIndex = (ushort)EsiUtilities.ParseHexDecString(x.Index.Value);
+                            var subIndex = byte.Parse(x.SubIndex);
                             //// Improve. What about -1 if SubIndex does not exist?
                             return new SlaveVariable(slavePdo, x.Name?.FirstOrDefault()?.Value, variableIndex, subIndex, dataDirection, EcUtilities.GetOneDasDataTypeFromEthercatDataType(x.DataType?.Value), (byte)x.BitLen);
                         }).ToList();
@@ -97,9 +92,9 @@ namespace EtherCAT.NET.Extensibility
                         for (ushort indexOffset = 0; indexOffset <= osMax - 1; indexOffset++)
                         {
                             pdoName = $"{pdoType.Name.First().Value} [{indexOffset}]";
-                            pdoIndex = (ushort)(ushort.Parse(pdoType.Index.Value.Substring(2), NumberStyles.HexNumber) + indexOffset);
+                            pdoIndex = (ushort)((ushort)EsiUtilities.ParseHexDecString(pdoType.Index.Value) + indexOffset);
                             syncManager = pdoType.SmSpecified ? pdoType.Sm : -1;
-                            indexOffset_Tmp = indexOffset;
+                            var indexOffset_Tmp = indexOffset;
 
                             slavePdo = new SlavePdo(slaveInfo, pdoName, pdoIndex, osMax, pdoType.Fixed, pdoType.Mandatory, syncManager);
 
@@ -107,8 +102,8 @@ namespace EtherCAT.NET.Extensibility
 
                             IList<SlaveVariable> slaveVariableSet = pdoType.Entry.Select(x =>
                             {
-                                ushort variableIndex = ushort.Parse(x.Index.Value.Substring(2), NumberStyles.HexNumber);
-                                byte subIndex = Convert.ToByte(Convert.ToByte(x.SubIndex) + indexOffset_Tmp);
+                                var variableIndex = (ushort)EsiUtilities.ParseHexDecString(x.Index.Value);
+                                var subIndex = (byte)(byte.Parse(x.SubIndex) + indexOffset_Tmp);
                                 //// Improve. What about -1 if SubIndex does not exist?
                                 return new SlaveVariable(slavePdo, x.Name.FirstOrDefault()?.Value, variableIndex, subIndex, dataDirection, EcUtilities.GetOneDasDataTypeFromEthercatDataType(x.DataType?.Value), (byte)x.BitLen);
                             }).ToList();

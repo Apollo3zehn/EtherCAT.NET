@@ -1,6 +1,7 @@
 # EtherCAT.NET
 
 [![AppVeyor](https://ci.appveyor.com/api/projects/status/github/apollo3zehn/ethercat.net?svg=true&branch=master)](https://ci.appveyor.com/project/Apollo3zehn/ethercat-net)
+[![NuGet](https://img.shields.io/nuget/vpre/ethercat.net.svg)](https://www.nuget.org/packages/EtherCAT.NET)
 
 A large amount of the logic of EtherCAT.NET comes from the data acquisition software [OneDAS](https://github.com/OneDAS-Group/OneDAS-Core), where the master has been extensively tested on many slaves from Beckhoff, Gantner and Anybus. Due to the effort to reduce protocol specific logic within OneDAS and to allow standalone use of the EtherCAT master, EtherCAT.NET was born. 
 

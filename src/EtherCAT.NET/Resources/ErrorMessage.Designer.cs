@@ -8,7 +8,7 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-namespace EtherCAT.NET {
+namespace EtherCAT {
     using System;
     
     
@@ -126,9 +126,13 @@ namespace EtherCAT.NET {
         /// <summary>
         ///   Sucht eine lokalisierte Zeichenfolge, die The adapter could not be initialized. Possible reasons are:
         ///
+        ///Windows: 
         ///- WinPcap is not installed
-        ///- disabled network interface
-        ///- TwinCAT claimed the adapter ähnelt.
+        ///- network interface is disabled
+        ///- TwinCAT blocks the network interface
+        ///
+        ///Linux: 
+        ///- The application is not running as root. ähnelt.
         /// </summary>
         internal static string Native_0x0101 {
             get {
@@ -146,7 +150,7 @@ namespace EtherCAT.NET {
         }
         
         /// <summary>
-        ///   Sucht eine lokalisierte Zeichenfolge, die Could not detect any slaves. Possible cause is a running TwinCAT instance which blocks the NIC. ähnelt.
+        ///   Sucht eine lokalisierte Zeichenfolge, die Could not detect any slaves. On Windows, a possible cause is a running TwinCAT instance which blocks the network interface. ähnelt.
         /// </summary>
         internal static string Native_0x0103 {
             get {
@@ -182,7 +186,7 @@ namespace EtherCAT.NET {
         }
         
         /// <summary>
-        ///   Sucht eine lokalisierte Zeichenfolge, die The static drift compensation for distributed clocks failed. ähnelt.
+        ///   Sucht eine lokalisierte Zeichenfolge, die The static drift compensation for distributed clocks failed. Consider increasing the TargetTimeDifference in the EcSettings object. ähnelt.
         /// </summary>
         internal static string Native_0x0302 {
             get {
@@ -380,7 +384,7 @@ namespace EtherCAT.NET {
         }
         
         /// <summary>
-        ///   Sucht eine lokalisierte Zeichenfolge, die No corresponding network interface could be found. ähnelt.
+        ///   Sucht eine lokalisierte Zeichenfolge, die The specified network interface could not be found. ähnelt.
         /// </summary>
         internal static string SoemWrapper_NetworkInterfaceNotFound {
             get {
