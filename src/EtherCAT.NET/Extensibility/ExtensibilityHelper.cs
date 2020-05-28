@@ -1,4 +1,4 @@
-using EtherCAT.NET.Extension;
+﻿using EtherCAT.NET.Extension;
 using EtherCAT.NET.Infrastructure;
 using OneDas;
 using OneDas.Extensibility;
@@ -61,16 +61,11 @@ namespace EtherCAT.NET.Extensibility
                 foreach (PdoType pdoType in pdoTypeSet)
                 {
                     int syncManager;
-
-                    ushort osMax;
                     ushort pdoIndex;
-                    ushort indexOffset_Tmp;
-
                     string pdoName;
-
                     SlavePdo slavePdo;
 
-                    osMax = Convert.ToUInt16(pdoType.OSMax);
+                    var osMax = Convert.ToUInt16(pdoType.OSMax);
 
                     if (osMax == 0)
                     {
@@ -99,7 +94,7 @@ namespace EtherCAT.NET.Extensibility
                             pdoName = $"{pdoType.Name.First().Value} [{indexOffset}]";
                             pdoIndex = (ushort)((ushort)EsiUtilities.ParseHexDecString(pdoType.Index.Value) + indexOffset);
                             syncManager = pdoType.SmSpecified ? pdoType.Sm : -1;
-                            indexOffset_Tmp = indexOffset;
+                            var indexOffset_Tmp = indexOffset;
 
                             slavePdo = new SlavePdo(slaveInfo, pdoName, pdoIndex, osMax, pdoType.Fixed, pdoType.Mandatory, syncManager);
 

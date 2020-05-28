@@ -1,4 +1,4 @@
-using EtherCAT.NET.Extensibility;
+﻿using EtherCAT.NET.Extensibility;
 using EtherCAT.NET.Infrastructure;
 using OneDas.Extensibility;
 using System;
@@ -97,7 +97,7 @@ namespace EtherCAT.NET.Extension
                     };
                 }
 
-                int cycleTimeSyncUnit = Convert.ToInt32(Math.Pow(10, 9) / cycleFrequency);
+                var cycleTimeSyncUnit = Convert.ToInt32(Math.Pow(10, 9) / cycleFrequency);
 
                 cycleTime0 = Convert.ToUInt32(dcOpMode.CycleTimeSync0?.Value);
 

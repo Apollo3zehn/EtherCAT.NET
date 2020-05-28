@@ -1,4 +1,4 @@
-using EtherCAT.NET.Infrastructure;
+﻿using EtherCAT.NET.Infrastructure;
 using EtherCAT.NET.Extension;
 using System;
 using System.Collections.Generic;
@@ -38,10 +38,9 @@ namespace EtherCAT.NET
 
         private static EtherCATInfo LoadEsi(string esiFileName)
         {
-            XmlSerializer xmlSerializer;
             EtherCATInfo etherCatInfo;
 
-            xmlSerializer = new XmlSerializer(typeof(EtherCATInfo));
+            var xmlSerializer = new XmlSerializer(typeof(EtherCATInfo));
 
             using (StreamReader streamReader = new StreamReader(esiFileName))
             {
@@ -196,15 +195,11 @@ namespace EtherCAT.NET
                     device = currentInfo.Descriptions.Devices.Where(currentDevice =>
                     {
                         var found = !string.IsNullOrWhiteSpace(currentDevice.Type.ProductCode) && 
-
-                        found = !string.IsNullOrWhiteSpace(currentDevice.Type.ProductCode) && 
                                     !string.IsNullOrWhiteSpace(currentDevice.Type.RevisionNo) &&
                                      (int)EsiUtilities.ParseHexDecString(currentDevice.Type.ProductCode) == productCode;
 
                         if (found)
-                        {
                             info = currentInfo;
-                        }
 
                         return found;
                     }).OrderBy(currentDevice => currentDevice.Type.RevisionNo).LastOrDefault();
@@ -212,9 +207,7 @@ namespace EtherCAT.NET
 
                 // return without success
                 if (device == null)
-                {
                     return (null, null, null);
-                }
             }
 
             // find group
@@ -226,74 +219,6 @@ namespace EtherCAT.NET
             }
 
             return (info, device, group);
-        }
-
-        private static bool UpdateCache(string esiSourceDirectoryPath, uint manufacturer, uint productCode, uint revision)
-        {
-            EtherCATInfo cacheInfo;
-            EtherCATInfo sourceInfo;
-            EtherCATInfoDescriptionsDevice sourceDevice;
-            List<EtherCATInfoDescriptionsGroup> cacheGroupSet;
-
-            // check if source ESI files have been loaded
-            if (!EsiUtilities.SourceEtherCatInfoSet.Any())
-            {
-                EsiUtilities.LoadEsiSource(esiSourceDirectoryPath);
-            }
-
-            // try to find requested device info
-            (sourceInfo, sourceDevice, _) = EsiUtilities.TryFindDevice(EsiUtilities.SourceEtherCatInfoSet, manufacturer, productCode, revision);
-
-            if (sourceDevice == null)
-            {
-                return false;
-            }
-
-            lock (_lock)
-            {
-                // find matching EtherCATInfo in cache
-                cacheInfo = EsiUtilities.CacheEtherCatInfoSet.FirstOrDefault(current =>
-                {
-                    var vendorId = (uint)EsiUtilities.ParseHexDecString(current.Vendor.Id);
-
-                    vendorId = current.Vendor.Id.Length > 2 ? uint.Parse(current.Vendor.Id.Substring(2), NumberStyles.HexNumber) : uint.Parse(current.Vendor.Id, NumberStyles.HexNumber);
-                    return vendorId == manufacturer;
-                });
-
-                // extend cache file
-                if (cacheInfo != null)
-                {
-                    // add new groups
-                    cacheGroupSet = cacheInfo.Descriptions.Groups.ToList();
-
-                    foreach (var sourceGroup in sourceInfo.Descriptions.Groups)
-                    {
-                        if (!cacheGroupSet.Any(current => current.Type == sourceGroup.Type))
-                        {
-                            cacheGroupSet.Add(sourceGroup);
-                        }
-                    }
-
-                    cacheInfo.Descriptions.Groups = cacheGroupSet.ToArray();
-
-                    // add found device
-                    cacheInfo.Descriptions.Devices = cacheInfo.Descriptions.Devices.ToList().Concat(new[] { sourceDevice }).ToArray();
-                }
-                // create new cache file
-                else
-                {
-                    cacheInfo = sourceInfo;
-                    cacheInfo.Descriptions.Devices = new EtherCATInfoDescriptionsDevice[] { sourceDevice };
-
-                    EsiUtilities.CacheEtherCatInfoSet.Add(cacheInfo);
-                }
-
-                // save new/updated EtherCATInfo to disk
-                EsiUtilities.SaveEsi(cacheInfo, Path.Combine(_cacheDirectoryPath, $"{cacheInfo.Vendor.Id}.xml"));
-            }
-
-            // return
-            return true;
         }
 
         public static void ResetCache()
@@ -341,11 +266,79 @@ namespace EtherCAT.NET
             return slaveInfo.SlaveEsi.Dc.OpMode.Select(opMode => new DistributedClocksOpMode(opMode)).ToList();
         }
 
+        public static long ParseHexDecString(string value)
+        {
+            if (value.StartsWith("#x"))
+                return uint.Parse(value.Replace("#x", string.Empty), NumberStyles.HexNumber);
+            else
+                return long.Parse(value);
+        }
+
+        private static bool UpdateCache(string esiSourceDirectoryPath, uint manufacturer, uint productCode, uint revision)
+        {
+            // check if source ESI files have been loaded
+            if (!EsiUtilities.SourceEtherCatInfoSet.Any())
+            {
+                EsiUtilities.LoadEsiSource(esiSourceDirectoryPath);
+            }
+
+            // try to find requested device info
+            (var sourceInfo, var sourceDevice, _) = EsiUtilities.TryFindDevice(EsiUtilities.SourceEtherCatInfoSet, manufacturer, productCode, revision);
+
+            if (sourceDevice == null)
+                return false;
+
+            lock (_lock)
+            {
+                // find matching EtherCATInfo in cache
+                var cacheInfo = EsiUtilities.CacheEtherCatInfoSet.FirstOrDefault(current =>
+                {
+                    var vendorId = (uint)EsiUtilities.ParseHexDecString(current.Vendor.Id);
+                    return vendorId == manufacturer;
+                });
+
+                // extend cache file
+                if (cacheInfo != null)
+                {
+                    // add new groups
+                    var cacheGroupSet = cacheInfo.Descriptions.Groups.ToList();
+
+                    foreach (var sourceGroup in sourceInfo.Descriptions.Groups)
+                    {
+                        if (!cacheGroupSet.Any(current => current.Type == sourceGroup.Type))
+                        {
+                            cacheGroupSet.Add(sourceGroup);
+                        }
+                    }
+
+                    cacheInfo.Descriptions.Groups = cacheGroupSet.ToArray();
+
+                    // add found device
+                    cacheInfo.Descriptions.Devices = cacheInfo.Descriptions.Devices.ToList().Concat(new[] { sourceDevice }).ToArray();
+                }
+                // create new cache file
+                else
+                {
+                    cacheInfo = sourceInfo;
+                    cacheInfo.Descriptions.Devices = new EtherCATInfoDescriptionsDevice[] { sourceDevice };
+
+                    EsiUtilities.CacheEtherCatInfoSet.Add(cacheInfo);
+                }
+
+                // save new/updated EtherCATInfo to disk
+                EsiUtilities.SaveEsi(cacheInfo, Path.Combine(_cacheDirectoryPath, $"{cacheInfo.Vendor.Id}.xml"));
+            }
+
+            // return
+            return true;
+        }
+
         #endregion
 
         #region Properties
 
         private static List<EtherCATInfo> CacheEtherCatInfoSet { get; set; }
+
         private static List<EtherCATInfo> SourceEtherCatInfoSet { get; set; }
 
         #endregion

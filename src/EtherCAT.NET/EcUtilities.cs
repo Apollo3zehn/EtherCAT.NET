@@ -29,13 +29,9 @@ namespace EtherCAT.NET
         public static OneDasDataType GetOneDasDataTypeFromEthercatDataType(string value)
         {
             if (value == null)
-            {
                 return 0;
-            }
             else
-            {
                 return EcUtilities.GetOneDasDataTypeFromEthercatDataType((EthercatDataType)Enum.Parse(typeof(EthercatDataType), value));
-            }
         }
 
         public static OneDasDataType GetOneDasDataTypeFromEthercatDataType(EthercatDataType ethercatDataType)
