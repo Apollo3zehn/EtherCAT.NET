@@ -155,36 +155,26 @@ namespace EtherCAT.NET
 
             foreach (var currentInfo in etherCATInfoSet)
             {
-                uint vendorId;
-
-                vendorId = (uint)EsiUtilities.ParseHexDecString(currentInfo.Vendor.Id);
+                var vendorId = (uint)EsiUtilities.ParseHexDecString(currentInfo.Vendor.Id);
 
                 if (vendorId != manufacturer)
-                {
                     continue;
-                }
 
                 device = currentInfo.Descriptions.Devices.FirstOrDefault(currentDevice =>
                 {
-                    bool found;
-
-                    found = !string.IsNullOrWhiteSpace(currentDevice.Type.ProductCode) &&
+                    var found = !string.IsNullOrWhiteSpace(currentDevice.Type.ProductCode) &&
                             !string.IsNullOrWhiteSpace(currentDevice.Type.RevisionNo) &&
                              (int)EsiUtilities.ParseHexDecString(currentDevice.Type.ProductCode) == productCode &&
                              (int)EsiUtilities.ParseHexDecString(currentDevice.Type.RevisionNo) == revision;
 
                     if (found)
-                    {
                         info = currentInfo;
-                    }
 
                     return found;
                 });
 
                 if (device != null)
-                {
                     break;
-                }
             }
 
             // try to find old revision
@@ -214,9 +204,7 @@ namespace EtherCAT.NET
             group = info.Descriptions.Groups.FirstOrDefault(currentGroup => currentGroup.Type == device.GroupType);
 
             if (group == null)
-            {
                 throw new Exception($"ESI entry for group type '{device}' not found.");
-            }
 
             return (info, device, group);
         }
@@ -237,11 +225,8 @@ namespace EtherCAT.NET
 
         public static (EtherCATInfoDescriptionsDevice device, EtherCATInfoDescriptionsGroup group) FindEsi(string esiSourceDirectoryPath, uint manufacturer, uint productCode, uint revision)
         {
-            EtherCATInfoDescriptionsDevice device;
-            EtherCATInfoDescriptionsGroup group;
-
             // try to find ESI in cache
-            (_, device, group) = EsiUtilities.TryFindDevice(EsiUtilities.CacheEtherCatInfoSet, manufacturer, productCode, revision);
+            (_, var device, var group) = EsiUtilities.TryFindDevice(EsiUtilities.CacheEtherCatInfoSet, manufacturer, productCode, revision);
 
             if (device == null)
             {

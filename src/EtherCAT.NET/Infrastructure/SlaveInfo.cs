@@ -145,18 +145,21 @@ namespace EtherCAT.NET.Infrastructure
             {
                 return this.DynamicData.PdoSet.Where(slavePdo => !slavePdo.IsFixed).Select(slavePdo =>
                 {
-                    List<object> dataset;
-                    List<SlaveVariable> slaveVariableSet;
+                    var slaveVariableSet = slavePdo.VariableSet.ToList();
 
-                    dataset = new List<object>();
-                    slaveVariableSet = slavePdo.VariableSet.ToList();
-
+                    var dataset = new List<object>();
                     dataset.Add((byte)slaveVariableSet.Count());
 
-                    foreach (SlaveVariable slaveVariable in slavePdo.VariableSet)
+                    foreach (var slaveVariable in slavePdo.VariableSet)
                     {
-                        dataset.Add((ushort)(slaveVariable.SubIndex + (Convert.ToUInt16(slaveVariable.BitLength) << 8)));
-                        dataset.Add(slaveVariable.Index);
+                        var lowBytes = slaveVariable.Index;
+                        var highBytes = (ushort)(slaveVariable.SubIndex + (Convert.ToUInt16(slaveVariable.BitLength) << 8));
+
+                        var bytes = BitConverter.GetBytes(highBytes);
+                        Array.Reverse(bytes);
+                        highBytes = BitConverter.ToUInt16(bytes, 0);
+
+                        dataset.Add((uint)(highBytes + (lowBytes << 16)));
                     }
 
                     return new SdoWriteRequest(slavePdo.Index, 0x00, dataset);
@@ -174,13 +177,9 @@ namespace EtherCAT.NET.Infrastructure
             {
                 return Enumerable.Range(2, 2).Select(syncManager =>
                 {
-                    List<object> dataset;
-                    List<SlavePdo> slavePdoSet;
+                    var slavePdoSet = this.DynamicData.PdoSet.Where(x => x.SyncManager == syncManager).ToList();
 
-                    dataset = new List<object>();
-                    slavePdoSet = this.DynamicData.PdoSet.Where(x => x.SyncManager == syncManager).ToList();
-
-                    //
+                    var dataset = new List<object>();
                     dataset.Add((byte)slavePdoSet.Count());
 
                     foreach (SlavePdo slavePdo in slavePdoSet)
