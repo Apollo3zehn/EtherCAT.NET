@@ -80,7 +80,7 @@ namespace EtherCAT.NET.Extensibility
                         var slaveVariables = pdoType.Entry.Select(x =>
                         {
                             var variableIndex = (ushort)EsiUtilities.ParseHexDecString(x.Index.Value);
-                            var subIndex = byte.Parse(x.SubIndex);
+                            var subIndex = Convert.ToByte(x.SubIndex);
                             //// Improve. What about -1 if SubIndex does not exist?
                             return new SlaveVariable(slavePdo, x.Name?.FirstOrDefault()?.Value, variableIndex, subIndex, dataDirection, EcUtilities.GetOneDasDataTypeFromEthercatDataType(x.DataType?.Value), (byte)x.BitLen);
                         }).ToList();
