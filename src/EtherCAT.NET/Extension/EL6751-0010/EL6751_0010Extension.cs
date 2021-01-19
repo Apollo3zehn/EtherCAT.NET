@@ -24,7 +24,7 @@ namespace EtherCAT.NET.Extension
 
         #region "Methods"
 
-        public override IEnumerable<SdoWriteRequest> GetSdoWriteRequestSet()
+        public override IEnumerable<SdoWriteRequest> GetSdoWriteRequests()
         {
             Byte localNodeAddress = 0x01;
             //Byte remoteNodeAddress = 0x01;

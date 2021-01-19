@@ -33,9 +33,7 @@ namespace EtherCAT.NET.Extension
         public override void EvaluateSettings()
         {
             if (this.WiringMode == 0)
-            {
                 throw new Exception(ExtensionErrorMessage.EL3202Settings_WiringModeInvalid);
-            }
         }
 
         #endregion

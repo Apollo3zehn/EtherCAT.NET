@@ -23,7 +23,7 @@ namespace EtherCAT.NET.Extension
 
         #region "Methods"
 
-        public override IEnumerable<SdoWriteRequest> GetSdoWriteRequestSet()
+        public override IEnumerable<SdoWriteRequest> GetSdoWriteRequests()
         {
             return new List<SdoWriteRequest>();
         }

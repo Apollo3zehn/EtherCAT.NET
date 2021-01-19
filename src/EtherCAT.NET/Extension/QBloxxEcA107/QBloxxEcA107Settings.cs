@@ -19,7 +19,7 @@ namespace EtherCAT.NET.Extension
 
         public QBloxxEcA107Settings(SlaveInfo slaveInfo) : base(slaveInfo)
         {
-            this.ModuleSet = new List<OneDasModule>();
+            this.Modules = new List<OneDasModule>();
         }
 
         #endregion
@@ -27,7 +27,7 @@ namespace EtherCAT.NET.Extension
         #region "Properties"
 
         [DataMember]
-        public List<OneDasModule> ModuleSet { get; set; }
+        public List<OneDasModule> Modules { get; set; }
 
         #endregion
 
@@ -35,17 +35,12 @@ namespace EtherCAT.NET.Extension
 
         public override void EvaluateSettings()
         {
-            SlavePdo slavePdo;
-            int currentInputIndex;
-            int currentOutputIndex;
-
-            //
-            currentInputIndex = 0;
-            currentOutputIndex = 0;
-            this.SlaveInfo.DynamicData.PdoSet.Clear();
+            var currentInputIndex = 0;
+            var currentOutputIndex = 0;
+            this.SlaveInfo.DynamicData.Pdos.Clear();
 
             // inputs
-            this.ModuleSet.ForEach(module =>
+            this.Modules.ForEach(module =>
             {
                 int currentIndex;
                 ushort pdoAddress;
@@ -82,14 +77,14 @@ namespace EtherCAT.NET.Extension
                         throw new ArgumentException();
                 }
 
-                slavePdo = new SlavePdo(this.SlaveInfo, $"{ prefix } { currentIndex } ({ module.DataType })", (ushort)(pdoAddress + currentIndex), 0, true, true, syncManager);
+                var slavePdo = new SlavePdo(this.SlaveInfo, $"{ prefix } { currentIndex } ({ module.DataType })", (ushort)(pdoAddress + currentIndex), 0, true, true, syncManager);
 
-                slavePdo.SetVariableSet(Enumerable.Range(0, module.Size).Select(currentVariableIndex =>
+                slavePdo.SetVariables(Enumerable.Range(0, module.Size).Select(currentVariableIndex =>
                 {
                     return new SlaveVariable(slavePdo, $"Var { currentVariableIndex }", (ushort)(variableAddress + currentIndex * 10), 0x01, module.DataDirection, module.DataType);
                 }).ToList());
 
-                this.SlaveInfo.DynamicData.PdoSet.Add(slavePdo);
+                this.SlaveInfo.DynamicData.Pdos.Add(slavePdo);
             });
         }
 

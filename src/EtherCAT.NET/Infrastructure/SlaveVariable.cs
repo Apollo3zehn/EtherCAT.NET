@@ -20,13 +20,9 @@ namespace EtherCAT.NET.Infrastructure
             this.SubIndex = subIndex;
 
             if (bitLength == 0)
-            {
                 this.BitLength = OneDasUtilities.GetBitLength(dataType, false);
-            }
             else
-            {
                 this.BitLength = bitLength;
-            }
         }
 
         #endregion
@@ -66,7 +62,7 @@ namespace EtherCAT.NET.Infrastructure
 
         public override string GetId()
         {
-            return $"{ this.Parent.Parent.Csa } / { this.Parent.Name } / { this.Name }";
+            return $"{this.Parent.Parent.Csa} / {this.Parent.Name} / {this.Name}";
         }
 
         #endregion

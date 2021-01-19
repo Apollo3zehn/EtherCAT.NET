@@ -25,19 +25,17 @@ namespace EtherCAT.NET.Extension
 
         #region "Methods"
 
-        public override IEnumerable<SdoWriteRequest> GetSdoWriteRequestSet()
+        public override IEnumerable<SdoWriteRequest> GetSdoWriteRequests()
         {
             object[] R_0x8000;
 
-            if (_settings.SelectedModuleSet.Count == 0)
-            {
+            if (_settings.SelectedModules.Count == 0)
                 throw new Exception($"At least one module must be selected for terminal EL6731-0010 ({ _settings.SlaveInfo.Csa }).");
-            }
 
             // cfgData
-            List<byte> cfgData = new List<byte>();
+            var cfgData = new List<byte>();
 
-            _settings.SelectedModuleSet.ToList().ForEach(x =>
+            _settings.SelectedModules.ToList().ForEach(x =>
             {
                 if ((int)x > 0xff)
                 {

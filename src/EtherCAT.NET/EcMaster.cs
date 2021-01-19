@@ -61,7 +61,8 @@ namespace EtherCAT.NET
 
         #region Constructors
 
-        public EcMaster(EcSettings settings, IExtensionFactory extensionFactory) : this(settings, extensionFactory, NullLogger.Instance)
+        public EcMaster(EcSettings settings, IExtensionFactory extensionFactory) 
+            : this(settings, extensionFactory, NullLogger.Instance)
         {
             //
         }
@@ -105,44 +106,34 @@ namespace EtherCAT.NET
 
         #region Methods
 
-        private void ValidateSlaves(IList<SlaveInfo> slaveInfoSet, IList<SlaveInfo> actualSlaveInfoSet)
+        private void ValidateSlaves(IList<SlaveInfo> slaveInfos, IList<SlaveInfo> actualSlaveInfos)
         {
-            if (slaveInfoSet.Count() != actualSlaveInfoSet.Count())
-            {
+            if (slaveInfos.Count() != actualSlaveInfos.Count())
                 throw new Exception(ErrorMessage.EthercatGateway_EtherCATConfigurationMismatch);
-            }
 
-            for (int i = 0; i <= actualSlaveInfoSet.Count() - 1; i++)
+            for (int i = 0; i <= actualSlaveInfos.Count() - 1; i++)
             {
-                if (!(actualSlaveInfoSet[i].ProductCode == slaveInfoSet[i].ProductCode && actualSlaveInfoSet[i].Revision == slaveInfoSet[i].Revision))
-                {
+                if (!(actualSlaveInfos[i].ProductCode == slaveInfos[i].ProductCode 
+                   && actualSlaveInfos[i].Revision == slaveInfos[i].Revision))
                     throw new Exception(ErrorMessage.EthercatGateway_EtherCATConfigurationMismatch);
-                }
             }
         }
 
-        private void ConfigureSlaves(IList<SlaveInfo> slaveInfoSet)
+        private void ConfigureSlaves(IList<SlaveInfo> slaveInfos)
         {
-            List<EcHL.PO2SOCallback> callbackSet;
+            var callbacks = new List<EcHL.PO2SOCallback>();
 
-            callbackSet = new List<EcHL.PO2SOCallback>();
-
-            foreach (SlaveInfo slaveInfo in slaveInfoSet)
+            foreach (SlaveInfo slaveInfo in slaveInfos)
             {
-                ushort currentSlaveIndex;
-                IEnumerable<SlaveExtensionLogic> extensionSet;
-                IEnumerable<SdoWriteRequest> sdoWriteRequestSet;
-                EcHL.PO2SOCallback callback;
-
                 // SDO / PDO config / PDO assign
-                currentSlaveIndex = (ushort)(Convert.ToUInt16(slaveInfoSet.ToList().IndexOf(slaveInfo)) + 1);
-                extensionSet = slaveInfo.SlaveExtensionSet.Select(slaveExtension => _extensionFactory.BuildLogic<SlaveExtensionLogic>(slaveExtension)).ToList();
+                var currentSlaveIndex = (ushort)(Convert.ToUInt16(slaveInfos.ToList().IndexOf(slaveInfo)) + 1);
+                var extensions = slaveInfo.SlaveExtensions.Select(slaveExtension => _extensionFactory.BuildLogic<SlaveExtensionLogic>(slaveExtension)).ToList();
 
-                sdoWriteRequestSet = slaveInfo.GetConfiguration(extensionSet).ToList();
+                var sdoWriteRequests = slaveInfo.GetConfiguration(extensions).ToList();
 
-                callback = slaveIndex =>
+                EcHL.PO2SOCallback callback = slaveIndex =>
                 {
-                    sdoWriteRequestSet.ToList().ForEach(sdoWriteRequest =>
+                    sdoWriteRequests.ToList().ForEach(sdoWriteRequest =>
                     {
                         EcUtilities.CheckErrorCode(this.Context, EcUtilities.SdoWrite(this.Context, slaveIndex, sdoWriteRequest.Index, sdoWriteRequest.SubIndex, sdoWriteRequest.Dataset), nameof(EcHL.SdoWrite));
                     });
@@ -151,60 +142,52 @@ namespace EtherCAT.NET
                 };
 
                 EcHL.RegisterCallback(this.Context, currentSlaveIndex, callback);
-                callbackSet.Add(callback);
+                callbacks.Add(callback);
             }
 
-            callbackSet.ForEach(callback =>
+            callbacks.ForEach(callback =>
             {
                 GC.KeepAlive(callback);
             });
         }
 
-        private void ConfigureIoMap(IList<SlaveInfo> slaveInfoSet)
+        private void ConfigureIoMap(IList<SlaveInfo> slaveInfos)
         {
-            int ioMapByteOffset;
-            int ioMapBitOffset;
-            int[] slavePdoOffsetSet;
-            int[] slaveRxPdoOffsetSet;
-            int[] slaveTxPdoOffsetSet;
+            var ioMapByteOffset = 0;
+            var ioMapBitOffset = 0;
+            var slavePdoOffsets = default(int[]);
+            var slaveRxPdoOffsets = new int[slaveInfos.Count() + 1];
+            var slaveTxPdoOffsets = new int[slaveInfos.Count() + 1];
 
-            ioMapByteOffset = 0;
-            ioMapBitOffset = 0;
-            slavePdoOffsetSet = null;
-            slaveRxPdoOffsetSet = new int[slaveInfoSet.Count() + 1];
-            slaveTxPdoOffsetSet = new int[slaveInfoSet.Count() + 1];
-
-            _actualIoMapSize = EcHL.ConfigureIoMap(this.Context, _ioMapPtr, slaveRxPdoOffsetSet, slaveTxPdoOffsetSet, out _expectedWorkingCounter);
+            _actualIoMapSize = EcHL.ConfigureIoMap(this.Context, _ioMapPtr, slaveRxPdoOffsets, slaveTxPdoOffsets, out _expectedWorkingCounter);
 
             foreach (DataDirection dataDirection in Enum.GetValues(typeof(DataDirection)))
             {
                 switch (dataDirection)
                 {
                     case DataDirection.Output:
-                        slavePdoOffsetSet = slaveRxPdoOffsetSet;
+                        slavePdoOffsets = slaveRxPdoOffsets;
                         break;
                     case DataDirection.Input:
-                        slavePdoOffsetSet = slaveTxPdoOffsetSet;
+                        slavePdoOffsets = slaveTxPdoOffsets;
                         break;
                     default:
                         throw new NotImplementedException();
                 }
 
-                foreach (SlaveInfo SlaveInfo in slaveInfoSet)
+                foreach (SlaveInfo SlaveInfo in slaveInfos)
                 {
-                    ioMapByteOffset = slavePdoOffsetSet[slaveInfoSet.ToList().IndexOf(SlaveInfo) + 1];
+                    ioMapByteOffset = slavePdoOffsets[slaveInfos.ToList().IndexOf(SlaveInfo) + 1];
 
-                    foreach (SlaveVariable variable in SlaveInfo.DynamicData.PdoSet.Where(x => x.SyncManager >= 0).ToList().SelectMany(x => x.VariableSet).ToList().Where(x => x.DataDirection == dataDirection))
+                    foreach (SlaveVariable variable in SlaveInfo.DynamicData.Pdos.Where(x => x.SyncManager >= 0).ToList().SelectMany(x => x.Variables).ToList().Where(x => x.DataDirection == dataDirection))
                     {
                         variable.DataPtr = IntPtr.Add(_ioMapPtr, ioMapByteOffset);
                         variable.BitOffset = ioMapBitOffset;
 
                         if (variable.DataType == OneDasDataType.BOOLEAN)
-                        {
                             variable.BitOffset = ioMapBitOffset; // bool is treated as bit-oriented
-                        }
 
-                        Debug.WriteLine($"{ variable.Name } { variable.DataPtr.ToInt64() - _ioMapPtr.ToInt64() }/{ variable.BitOffset }");
+                        Debug.WriteLine($"{variable.Name} {variable.DataPtr.ToInt64() - _ioMapPtr.ToInt64()}/{variable.BitOffset}");
 
                         ioMapBitOffset += variable.BitLength;
 
@@ -217,37 +200,34 @@ namespace EtherCAT.NET
                 }
             }
 
-            _logger.LogInformation($"IO map configured ({slaveInfoSet.Count()} {(slaveInfoSet.Count() > 1 ? "slaves" : "slave")}, {_actualIoMapSize} bytes)");
+            _logger.LogInformation($"IO map configured ({slaveInfos.Count()} {(slaveInfos.Count() > 1 ? "slaves" : "slave")}, {_actualIoMapSize} bytes)");
         }
 
         private void ConfigureDc()
         {
-            uint systemTimeDifference;
-            EcUtilities.CheckErrorCode(this.Context, EcHL.ConfigureDc(this.Context, _settings.FrameCount, _settings.TargetTimeDifference, out systemTimeDifference), nameof(EcHL.ConfigureDc));
+            EcUtilities.CheckErrorCode(this.Context, EcHL.ConfigureDc(this.Context, _settings.FrameCount, _settings.TargetTimeDifference, out var systemTimeDifference), nameof(EcHL.ConfigureDc));
 
-            _logger.LogInformation($"DC system time diff. is <= { systemTimeDifference & 0x7FFF } ns");
+            _logger.LogInformation($"DC system time diff. is <= {systemTimeDifference & 0x7FFF} ns");
         }
 
-        private void ConfigureSync01(IList<SlaveInfo> slaveInfoSet)
+        private void ConfigureSync01(IList<SlaveInfo> slaveInfos)
         {
             // SYNC0 / SYNC1
-            foreach (SlaveInfo slaveInfo in slaveInfoSet)
+            foreach (var slaveInfo in slaveInfos)
             {
-                ushort slaveIndex;
-                DistributedClocksSettings distributedClocksSettings;
-
-                slaveIndex = (ushort)(Convert.ToUInt16(slaveInfoSet.ToList().IndexOf(slaveInfo)) + 1);
-                distributedClocksSettings = slaveInfo.SlaveExtensionSet.OfType<DistributedClocksSettings>().ToList().FirstOrDefault();
+                var slaveIndex = (ushort)(Convert.ToUInt16(slaveInfos.ToList().IndexOf(slaveInfo)) + 1);
+                var distributedClocksSettings = slaveInfo
+                    .SlaveExtensions
+                    .OfType<DistributedClocksSettings>()
+                    .ToList()
+                    .FirstOrDefault();
 
                 if (distributedClocksSettings != null)
                 {
-                    DistributedClocksParameters parameters;
-                    byte[] assignActivate;
-
                     if (!slaveInfo.SlaveEsi.Dc.TimeLoopControlOnly)
                     {
-                        assignActivate = null;
-                        parameters = distributedClocksSettings.CalculateDcParameters(ref assignActivate, _settings.CycleFrequency);
+                        byte[] assignActivate = null;
+                        var parameters = distributedClocksSettings.CalculateDcParameters(ref assignActivate, _settings.CycleFrequency);
                         EcUtilities.CheckErrorCode(this.Context, EcHL.ConfigureSync01(this.Context, slaveIndex, ref assignActivate, assignActivate.Count(), parameters.CycleTime0, parameters.CycleTime1, parameters.ShiftTime0));
                     }
                 }
@@ -256,21 +236,17 @@ namespace EtherCAT.NET
 
         public void Configure(SlaveInfo rootSlaveInfo = null)
         {
-            SlaveInfo actualSlaveInfo;
-            IList<SlaveInfo> slaveInfoSet;
-            IList<SlaveInfo> actualSlaveInfoSet;
-            NetworkInterface networkInterface;
-
-            networkInterface = NetworkInterface.GetAllNetworkInterfaces().Where(nic => nic.Name == _settings.InterfaceName).FirstOrDefault();
+            var networkInterface = NetworkInterface
+                .GetAllNetworkInterfaces()
+                .Where(nic => nic.Name == _settings.InterfaceName)
+                .FirstOrDefault();
 
             if (networkInterface?.OperationalStatus != OperationalStatus.Up)
-            {
                 throw new Exception($"Network interface '{_settings.InterfaceName}' is not linked. Aborting action.");
-            }
 
             #region "PreOp"
 
-            actualSlaveInfo = EcUtilities.ScanDevices(this.Context, _settings.InterfaceName, null);
+            var actualSlaveInfo = EcUtilities.ScanDevices(this.Context, _settings.InterfaceName, null);
 
             if (rootSlaveInfo == null)
             {
@@ -282,14 +258,14 @@ namespace EtherCAT.NET
                 });
             }
 
-            slaveInfoSet = rootSlaveInfo.Descendants().ToList();
-            actualSlaveInfoSet = actualSlaveInfo.Descendants().ToList();
+            var slaveInfos = rootSlaveInfo.Descendants().ToList();
+            var actualSlaveInfos = actualSlaveInfo.Descendants().ToList();
 
-            this.ValidateSlaves(slaveInfoSet, actualSlaveInfoSet);
-            this.ConfigureSlaves(slaveInfoSet);
-            this.ConfigureIoMap(slaveInfoSet);
+            this.ValidateSlaves(slaveInfos, actualSlaveInfos);
+            this.ConfigureSlaves(slaveInfos);
+            this.ConfigureIoMap(slaveInfos);
             this.ConfigureDc();
-            this.ConfigureSync01(slaveInfoSet);
+            this.ConfigureSync01(slaveInfos);
 
             #endregion
 
@@ -306,9 +282,7 @@ namespace EtherCAT.NET
             #endregion
 
             if (_watchdogTask == null)
-            {
                 _watchdogTask = Task.Run(() => this.WatchdogRoutine(), _cts.Token);
-            }
         }
 
         public void UpdateIO(DateTime referenceDateTime)
@@ -339,7 +313,7 @@ namespace EtherCAT.NET
                     if (_wkcMismatchCounter == _settings.CycleFrequency)
                     {
                         _logger.LogWarning($"working counter mismatch { _actualWorkingCounter }/{ _expectedWorkingCounter }");
-                        //Trace.WriteLine(EcUtilities.GetSlaveStateDescription(_ecSettings.RootSlaveInfoSet.SelectMany(x => x.Descendants()).ToList()));
+                        //Trace.WriteLine(EcUtilities.GetSlaveStateDescription(_ecSettings.RootSlaveInfos.SelectMany(x => x.Descendants()).ToList()));
                         _wkcMismatchCounter = 0;
                     }
 
@@ -396,9 +370,7 @@ namespace EtherCAT.NET
                 }
 
                 if (_isDcCompensationRunning)
-                {
                     EcHL.CompensateDcDrift(this.Context, Convert.ToInt32(Math.Min(Math.Max(this.DcRingBufferAverage, -_dcDriftCompensationRate), _dcDriftCompensationRate)));
-                }
 
                 _dcRingBufferIndex = (_dcRingBufferIndex + 1) % _dcRingBufferSize;
             }
@@ -408,11 +380,9 @@ namespace EtherCAT.NET
 
         private void WatchdogRoutine()
         {
-            int state;
-
             while (!_cts.IsCancellationRequested)
             {
-                state = EcHL.ReadState(this.Context);
+                var state = EcHL.ReadState(this.Context);
 
                 if (state < 8)
                 {
@@ -467,9 +437,7 @@ namespace EtherCAT.NET
             if (!disposedValue)
             {
                 if (_ioMapPtr != IntPtr.Zero)
-                {
                     Marshal.FreeHGlobal(_ioMapPtr);
-                }
 
                 _cts?.Cancel();
 

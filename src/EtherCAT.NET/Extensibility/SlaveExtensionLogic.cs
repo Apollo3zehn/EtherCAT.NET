@@ -12,6 +12,6 @@ namespace EtherCAT.NET.Extensibility
         }
 
         public new SlaveExtensionSettingsBase Settings { get; private set; }
-        public abstract IEnumerable<SdoWriteRequest> GetSdoWriteRequestSet();
+        public abstract IEnumerable<SdoWriteRequest> GetSdoWriteRequests();
     }
 }

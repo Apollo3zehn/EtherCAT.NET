@@ -19,7 +19,7 @@ namespace EtherCAT.NET.Extension
 
         public AnybusXGatewaySettings(SlaveInfo slaveInfo) : base(slaveInfo)
         {
-            this.ModuleSet = new List<OneDasModule>();
+            this.Modules = new List<OneDasModule>();
         }
 
         #endregion
@@ -27,7 +27,7 @@ namespace EtherCAT.NET.Extension
         #region "Properties"
 
         [DataMember]
-        public List<OneDasModule> ModuleSet { get; set; }
+        public List<OneDasModule> Modules { get; set; }
 
         #endregion
 
@@ -35,48 +35,34 @@ namespace EtherCAT.NET.Extension
 
         public override void EvaluateSettings()
         {
-            int consumedBytes;
-            int currentPdo;
-            int currentIndex;
-            int currentBytes;
-
-            SlavePdo currentSlavePdo;
-
-            //
-            this.SlaveInfo.DynamicData.PdoSet.Clear();
+            this.SlaveInfo.DynamicData.Pdos.Clear();
 
             // inputs
-            consumedBytes = 0;
-            currentPdo = 0;
-            currentIndex = 0;
+            var consumedBytes = 0;
+            var currentPdo = 0;
+            var currentIndex = 0;
 
-            this.ModuleSet.Where(module => module.DataDirection == DataDirection.Input).ToList().ForEach(module =>
+            this.Modules.Where(module => module.DataDirection == DataDirection.Input).ToList().ForEach(module =>
             {
                 if (currentPdo > 4)
-                {
                     throw new Exception(ExtensionErrorMessage.AnybusXGatewaySettings_TooManyModules);
-                }
 
                 if (module.DataType == OneDasDataType.BOOLEAN)
-                {
                     throw new Exception(ExtensionErrorMessage.AnybusXGatewaySettings_InvalidDatatype);
-                }
 
-                currentBytes = ((int)module.DataType & 0x0FF) / 8 * module.Size;
+                var currentBytes = ((int)module.DataType & 0x0FF) / 8 * module.Size;
 
                 if (consumedBytes + currentBytes > 0x80)
-                {
                     throw new Exception(ExtensionErrorMessage.AnybusXGatewaySettings_InvalidSize);
-                }
 
-                currentSlavePdo = new SlavePdo(this.SlaveInfo, $"RxPDO { currentIndex } ({ module.Size }x { module.DataType })", (ushort)(0x1A00 + currentPdo), 0, true, true, 0x03);
+                var currentSlavePdo = new SlavePdo(this.SlaveInfo, $"RxPDO { currentIndex } ({ module.Size }x { module.DataType })", (ushort)(0x1A00 + currentPdo), 0, true, true, 0x03);
 
-                currentSlavePdo.SetVariableSet(Enumerable.Range(0, module.Size).Select(currentVariableIndex =>
+                currentSlavePdo.SetVariables(Enumerable.Range(0, module.Size).Select(currentVariableIndex =>
                 {
                     return new SlaveVariable(currentSlavePdo, $"Var { currentVariableIndex }", (ushort)(0x2000 + currentPdo), (byte)(consumedBytes + currentVariableIndex), DataDirection.Input, module.DataType);
                 }).ToList());
 
-                this.SlaveInfo.DynamicData.PdoSet.Add(currentSlavePdo);
+                this.SlaveInfo.DynamicData.Pdos.Add(currentSlavePdo);
 
                 currentIndex++;
                 consumedBytes += currentBytes;
@@ -94,33 +80,29 @@ namespace EtherCAT.NET.Extension
             currentPdo = 0;
             currentIndex = 0;
 
-            this.ModuleSet.Where(module => module.DataDirection == DataDirection.Output).ToList().ForEach(module =>
+            this.Modules.Where(module => module.DataDirection == DataDirection.Output).ToList().ForEach(module =>
             {
                 if (currentPdo > 4)
-                {
                     throw new Exception(ExtensionErrorMessage.AnybusXGatewaySettings_TooManyModules);
-                }
 
                 if (module.DataType == OneDasDataType.BOOLEAN)
-                {
                     throw new Exception(ExtensionErrorMessage.AnybusXGatewaySettings_InvalidDatatype);
-                }
 
-                currentBytes = ((int)module.DataType & 0x0FF) / 8 * module.Size;
+                var currentBytes = ((int)module.DataType & 0x0FF) / 8 * module.Size;
 
                 if (consumedBytes + currentBytes > 0x80)
                 {
                     throw new Exception(ExtensionErrorMessage.AnybusXGatewaySettings_InvalidSize);
                 }
 
-                currentSlavePdo = new SlavePdo(this.SlaveInfo, $"TxPDO { currentIndex } ({ module.Size }x { module.DataType })", (ushort)(0x1600 + currentPdo), 0, true, true, 0x02);
+                var currentSlavePdo = new SlavePdo(this.SlaveInfo, $"TxPDO { currentIndex } ({ module.Size }x { module.DataType })", (ushort)(0x1600 + currentPdo), 0, true, true, 0x02);
 
-                currentSlavePdo.SetVariableSet(Enumerable.Range(0, module.Size).Select(currentVariableIndex =>
+                currentSlavePdo.SetVariables(Enumerable.Range(0, module.Size).Select(currentVariableIndex =>
                 {
                     return new SlaveVariable(currentSlavePdo, $"Var { currentVariableIndex }", (ushort)(0x2000 + currentPdo), (byte)(consumedBytes + currentVariableIndex), DataDirection.Output, module.DataType);
                 }).ToList());
 
-                this.SlaveInfo.DynamicData.PdoSet.Add(currentSlavePdo);
+                this.SlaveInfo.DynamicData.Pdos.Add(currentSlavePdo);
 
                 currentIndex++;
                 consumedBytes += currentBytes;

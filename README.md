@@ -38,7 +38,7 @@ The master can be operated without having a list of slaves. In that case, it sca
     var rootSlaveInfo = EcUtilities.ScanDevices(<network interface name>);
     ```
 
-The returned ```rootSlaveInfo``` is the master itself, which holds child slaves in its ```SlaveInfoSet``` property)
+The returned ```rootSlaveInfo``` is the master itself, which holds child slaves in its ```SlaveInfos``` property)
 After that, the found slaves should be populated with ESI information:
 
 ```cs
@@ -61,7 +61,7 @@ message.AppendLine($"Found {slaves.Count()} slaves:");
 
 slaves.ForEach(current =>
 {
-    message.AppendLine($"{current.DynamicData.Name} (PDOs: {current.DynamicData.PdoSet.Count} - CSA: { current.Csa })");
+    message.AppendLine($"{current.DynamicData.Name} (PDOs: {current.DynamicData.Pdos.Count} - CSA: { current.Csa })");
 });
 
 logger.LogInformation(message.ToString().TrimEnd());
@@ -85,14 +85,14 @@ var EL1008 = slaves[1];
 When you have a reference to a slave, the PDOs can be accessed via the ```DynamicData``` property:
 
 ```cs
-var pdos = slaves[0].DynamicData.PdoSet;
+var pdos = slaves[0].DynamicData.Pdos;
 var channel0 = pdo[0];
 ```
 
 Since a PDO is a group of variables, these can be found below the PDO:
 
 ```cs
-var variables = pdo.VariableSet;
+var variables = pdo.Variables;
 var variable0 = variables[0];
 ```
 

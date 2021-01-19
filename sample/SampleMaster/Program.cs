@@ -68,13 +68,13 @@ namespace SampleMaster
 
             slaves.ForEach(current =>
             {
-                message.AppendLine($"{current.DynamicData.Name} (PDOs: {current.DynamicData.PdoSet.Count} - CSA: { current.Csa })");
+                message.AppendLine($"{current.DynamicData.Name} (PDOs: {current.DynamicData.Pdos.Count} - CSA: {current.Csa})");
             });
 
             logger.LogInformation(message.ToString().TrimEnd());
 
             /* create variable references for later use */
-            var variables = slaves.SelectMany(child => child.GetVariableSet()).ToList();
+            var variables = slaves.SelectMany(child => child.GetVariables()).ToList();
 
             /* create EC Master */
             using (var master = new EcMaster(settings, extensionFactory, logger))

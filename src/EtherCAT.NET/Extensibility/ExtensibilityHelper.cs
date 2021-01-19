@@ -18,7 +18,7 @@ namespace EtherCAT.NET.Extensibility
         {
             string name;
             string description;
-            List<SlavePdo> pdoSet;
+            List<SlavePdo> pdos;
             byte[] base64ImageData;
 
             // find ESI
@@ -28,7 +28,7 @@ namespace EtherCAT.NET.Extensibility
             }
 
             //
-            pdoSet = new List<SlavePdo>();
+            pdos = new List<SlavePdo>();
             base64ImageData = new byte[] { };
 
             name = slaveInfo.SlaveEsi.Type.Value;
@@ -46,19 +46,19 @@ namespace EtherCAT.NET.Extensibility
             // PDOs
             foreach (DataDirection dataDirection in Enum.GetValues(typeof(DataDirection)))
             {
-                IEnumerable<PdoType> pdoTypeSet = null;
+                IEnumerable<PdoType> pdoTypes = null;
 
                 switch (dataDirection)
                 {
                     case DataDirection.Output:
-                        pdoTypeSet = slaveInfo.SlaveEsi.RxPdo;
+                        pdoTypes = slaveInfo.SlaveEsi.RxPdo;
                         break;
                     case DataDirection.Input:
-                        pdoTypeSet = slaveInfo.SlaveEsi.TxPdo;
+                        pdoTypes = slaveInfo.SlaveEsi.TxPdo;
                         break;
                 }
 
-                foreach (PdoType pdoType in pdoTypeSet)
+                foreach (var pdoType in pdoTypes)
                 {
                     int syncManager;
                     ushort pdoIndex;
@@ -73,11 +73,11 @@ namespace EtherCAT.NET.Extensibility
                         pdoIndex = (ushort)EsiUtilities.ParseHexDecString(pdoType.Index.Value);
                         syncManager = pdoType.SmSpecified ? pdoType.Sm : -1;
 
-                        slavePdo = new SlavePdo(slaveInfo, pdoName, pdoIndex, osMax, pdoType.Fixed, pdoType.Mandatory, syncManager);
+                        var slavePdo = new SlavePdo(slaveInfo, pdoName, pdoIndex, osMax, pdoType.Fixed, pdoType.Mandatory, syncManager);
 
-                        pdoSet.Add(slavePdo);
+                        pdos.Add(slavePdo);
 
-                        IList<SlaveVariable> slaveVariableSet = pdoType.Entry.Select(x =>
+                        var slaveVariables = pdoType.Entry.Select(x =>
                         {
                             var variableIndex = (ushort)EsiUtilities.ParseHexDecString(x.Index.Value);
                             var subIndex = byte.Parse(x.SubIndex);
@@ -85,7 +85,7 @@ namespace EtherCAT.NET.Extensibility
                             return new SlaveVariable(slavePdo, x.Name?.FirstOrDefault()?.Value, variableIndex, subIndex, dataDirection, EcUtilities.GetOneDasDataTypeFromEthercatDataType(x.DataType?.Value), (byte)x.BitLen);
                         }).ToList();
 
-                        slavePdo.SetVariableSet(slaveVariableSet);
+                        slavePdo.SetVariables(slaveVariables);
                     }
                     else
                     {
@@ -96,11 +96,11 @@ namespace EtherCAT.NET.Extensibility
                             syncManager = pdoType.SmSpecified ? pdoType.Sm : -1;
                             var indexOffset_Tmp = indexOffset;
 
-                            slavePdo = new SlavePdo(slaveInfo, pdoName, pdoIndex, osMax, pdoType.Fixed, pdoType.Mandatory, syncManager);
+                            var slavePdo = new SlavePdo(slaveInfo, pdoName, pdoIndex, osMax, pdoType.Fixed, pdoType.Mandatory, syncManager);
 
-                            pdoSet.Add(slavePdo);
+                            pdos.Add(slavePdo);
 
-                            IList<SlaveVariable> slaveVariableSet = pdoType.Entry.Select(x =>
+                            var slaveVariables = pdoType.Entry.Select(x =>
                             {
                                 var variableIndex = (ushort)EsiUtilities.ParseHexDecString(x.Index.Value);
                                 var subIndex = (byte)(byte.Parse(x.SubIndex) + indexOffset_Tmp);
@@ -108,7 +108,7 @@ namespace EtherCAT.NET.Extensibility
                                 return new SlaveVariable(slavePdo, x.Name.FirstOrDefault()?.Value, variableIndex, subIndex, dataDirection, EcUtilities.GetOneDasDataTypeFromEthercatDataType(x.DataType?.Value), (byte)x.BitLen);
                             }).ToList();
 
-                            slavePdo.SetVariableSet(slaveVariableSet);
+                            slavePdo.SetVariables(slaveVariables);
                         }
                     }
                 }
@@ -126,12 +126,12 @@ namespace EtherCAT.NET.Extensibility
             }
 
             // attach dynamic data
-            slaveInfo.DynamicData = new SlaveInfoDynamicData(name, description, pdoSet, base64ImageData);
+            slaveInfo.DynamicData = new SlaveInfoDynamicData(name, description, pdos, base64ImageData);
 
             // execute extension logic
             ExtensibilityHelper.UpdateSlaveExtensions(extensionFactory, slaveInfo);
 
-            slaveInfo.SlaveExtensionSet.ToList().ForEach(slaveExtension =>
+            slaveInfo.SlaveExtensions.ToList().ForEach(slaveExtension =>
             {
                 slaveExtension.EvaluateSettings();
             });
@@ -139,23 +139,18 @@ namespace EtherCAT.NET.Extensibility
 
         public static void UpdateSlaveExtensions(IExtensionFactory extensionFactory, SlaveInfo slaveInfo, SlaveInfo referenceEcSlaveInfo = null)
         {
-            IEnumerable<Type> referenceTypeSet;
-            IEnumerable<SlaveExtensionSettingsBase> referenceSet;
-            IEnumerable<SlaveExtensionSettingsBase> newSet;
             TargetSlaveAttribute targetSlaveAttribute;
 
-            referenceSet = referenceEcSlaveInfo?.SlaveExtensionSet;
+            var references = referenceEcSlaveInfo?.SlaveExtensions;
 
-            if (referenceSet == null)
+            if (references == null)
+                references = slaveInfo.SlaveExtensions;
+
+            var referenceTypes = references.Select(x => x.GetType()).ToList();
+
+            var newSet = extensionFactory.Get<SlaveExtensionSettingsBase>().Where(type =>
             {
-                referenceSet = slaveInfo.SlaveExtensionSet;
-            }
-
-            referenceTypeSet = referenceSet.Select(x => x.GetType()).ToList();
-
-            newSet = extensionFactory.Get<SlaveExtensionSettingsBase>().Where(type =>
-            {
-                if (!referenceTypeSet.Contains(type))
+                if (!referenceTypes.Contains(type))
                 {
                     if (type == typeof(DistributedClocksSettings))
                     {
@@ -174,39 +169,35 @@ namespace EtherCAT.NET.Extensibility
                 }
             }).Select(type => (SlaveExtensionSettingsBase)Activator.CreateInstance(type, slaveInfo)).ToList();
 
-            slaveInfo.SlaveExtensionSet = referenceSet.Concat(newSet).ToList();
+            slaveInfo.SlaveExtensions = references.Concat(newSet).ToList();
 
             // Improve: only required after deserialization, not after construction as the slaveInfo is passed a constructor parameter
-            slaveInfo.SlaveExtensionSet.ToList().ForEach(slaveExtension => slaveExtension.SlaveInfo = slaveInfo);
+            slaveInfo.SlaveExtensions.ToList().ForEach(slaveExtension => slaveExtension.SlaveInfo = slaveInfo);
         }
 
         public static SlaveInfo ReloadHardware(string esiDirectoryPath, IExtensionFactory extensionFactory, string interfaceName, SlaveInfo referenceRootSlaveInfo)
         {
-            IntPtr context;
-            SlaveInfo newRootSlaveInfo;
-            SlaveInfo referenceSlaveInfo;
-            IEnumerable<SlaveInfo> referenceSlaveInfoSet;
-
-            referenceSlaveInfo = null;
-            referenceSlaveInfoSet = null;
 
             if (NetworkInterface.GetAllNetworkInterfaces().Where(x => x.GetPhysicalAddress().ToString() == interfaceName).FirstOrDefault()?.OperationalStatus != OperationalStatus.Up)
             {
                 throw new Exception($"The network interface '{interfaceName}' is not linked. Aborting action.");
             }
 
-            context = EcHL.CreateContext();
-            newRootSlaveInfo = EcUtilities.ScanDevices(context, interfaceName, referenceRootSlaveInfo);
+            var context = EcHL.CreateContext();
+            var newRootSlaveInfo = EcUtilities.ScanDevices(context, interfaceName, referenceRootSlaveInfo);
             EcHL.FreeContext(context);
 
+            var referenceSlaveInfos = default(IEnumerable<SlaveInfo>);
+
             if (referenceRootSlaveInfo != null)
-            {
-                referenceSlaveInfoSet = referenceRootSlaveInfo.Descendants().ToList();
-            }
+                referenceSlaveInfos = referenceRootSlaveInfo.Descendants().ToList();
 
             newRootSlaveInfo.Descendants().ToList().ForEach(slaveInfo =>
             {
-                referenceSlaveInfo = slaveInfo.Csa == slaveInfo.OldCsa ? referenceSlaveInfoSet?.FirstOrDefault(x => x.Csa == slaveInfo.Csa) : null;
+                var referenceSlaveInfo = slaveInfo.Csa == slaveInfo.OldCsa 
+                    ? referenceSlaveInfos?.FirstOrDefault(x => x.Csa == slaveInfo.Csa) 
+                    : null;
+                
                 ExtensibilityHelper.GetDynamicSlaveInfoData(esiDirectoryPath, extensionFactory, slaveInfo);
                 ExtensibilityHelper.UpdateSlaveExtensions(extensionFactory, slaveInfo, referenceSlaveInfo);
             });

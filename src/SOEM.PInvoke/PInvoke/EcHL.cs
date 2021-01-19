@@ -9,17 +9,6 @@ namespace SOEM.PInvoke
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         public delegate double PO2SOCallback(UInt16 slaveIndex);
 
-        private static Random _random;
-
-        #region "Constructors"
-
-        static EcHL()
-        {
-            _random = new Random();
-        }
-
-        #endregion
-
         #region "Helper"
 
         #endregion
@@ -54,12 +43,12 @@ namespace SOEM.PInvoke
         /// Initializes EtherCAT and scans for connected slaves.
         /// </summary>
         /// <param name="networkInterfaceName">The name of the network interface which is connected to the EtherCAT network.</param>
-        /// <param name="slaveIdentificationSet">A list of <see cref="IntPtr"/> where each one points to a <see cref="ec_slave_info_t"/>.</param>
+        /// <param name="slaveIdentifications">A list of <see cref="IntPtr"/> where each one points to a <see cref="ec_slave_info_t"/>.</param>
         /// <param name="slaveCount">The number of slaves found.</param>
         /// <returns>Returns the status code of the unmanaged operation.</returns>
         [SuppressUnmanagedCodeSecurity]
         [DllImport(EcShared.NATIVE_DLL_NAME)]
-        public static extern int ScanDevices(IntPtr context, string networkInterfaceName, out IntPtr slaveIdentificationSet, out int slaveCount);
+        public static extern int ScanDevices(IntPtr context, string networkInterfaceName, out IntPtr slaveIdentifications, out int slaveCount);
 
         [SuppressUnmanagedCodeSecurity]
         [DllImport(EcShared.NATIVE_DLL_NAME)]
@@ -67,7 +56,7 @@ namespace SOEM.PInvoke
 
         [SuppressUnmanagedCodeSecurity]
         [DllImport(EcShared.NATIVE_DLL_NAME)]
-        public static extern int UploadPdoConfig(IntPtr context, UInt16 slave, UInt16 smIndex, out IntPtr pdoInfoSet, out int pdoCount);
+        public static extern int UploadPdoConfig(IntPtr context, UInt16 slave, UInt16 smIndex, out IntPtr pdoInfos, out int pdoCount);
 
         [SuppressUnmanagedCodeSecurity]
         [DllImport(EcShared.NATIVE_DLL_NAME)]
@@ -83,19 +72,19 @@ namespace SOEM.PInvoke
         /// <returns>Returns the status code of the unmanaged operation.</returns>
         [SuppressUnmanagedCodeSecurity]
         [DllImport(EcShared.NATIVE_DLL_NAME)]
-        public static extern int SdoWrite(IntPtr context, UInt16 slaveIndex, UInt16 sdoIndex, byte sdoSubIndex, byte[] dataset, UInt32 datasetCount, Int32[] byteCountSet);
+        public static extern int SdoWrite(IntPtr context, UInt16 slaveIndex, UInt16 sdoIndex, byte sdoSubIndex, byte[] dataset, UInt32 datasetCount, Int32[] byteCounts);
 
         /// <summary>
         /// Configures the sync managers, FMMUs and the IO map of the EtherCAT network.
         /// </summary>
         /// <param name="ioMapPtr">An <see cref="IntPtr"/> to the IO map buffer.</param>
-        /// <param name="slaveRxPdoOffsetSet">The calculated offsets of each slave's receive process data objects.</param>
-        /// <param name="slaveTxPdoOffsetSet">The calculated offsets of each slave's transmit process data objects.</param>
+        /// <param name="slaveRxPdoOffsets">The calculated offsets of each slave's receive process data objects.</param>
+        /// <param name="slaveTxPdoOffsets">The calculated offsets of each slave's transmit process data objects.</param>
         /// <param name="expectedWorkingCounter">The expected working counter.</param>
         /// <returns>Returns the status code of the unmanaged operation.</returns>
         [SuppressUnmanagedCodeSecurity]
         [DllImport(EcShared.NATIVE_DLL_NAME)]
-        public static extern int ConfigureIoMap(IntPtr context, IntPtr ioMapPtr, int[] slaveRxPdoOffsetSet, int[] slaveTxPdoOffsetSet, out int expectedWorkingCounter);
+        public static extern int ConfigureIoMap(IntPtr context, IntPtr ioMapPtr, int[] slaveRxPdoOffsets, int[] slaveTxPdoOffsets, out int expectedWorkingCounter);
 
         /// <summary>
         /// Configures the distributed clocks system.

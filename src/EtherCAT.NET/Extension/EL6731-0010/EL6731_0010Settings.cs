@@ -20,7 +20,7 @@ namespace EtherCAT.NET.Extension
 
         public EL6731_0010Settings(SlaveInfo slaveInfo) : base(slaveInfo)
         {
-            this.SelectedModuleSet = new List<EL6731_0010Module>();
+            this.SelectedModules = new List<EL6731_0010Module>();
             this.StationNumber = 1;
         }
 
@@ -32,7 +32,7 @@ namespace EtherCAT.NET.Extension
         public byte StationNumber { get; set; }
 
         [DataMember]
-        public List<EL6731_0010Module> SelectedModuleSet { get; set; }
+        public List<EL6731_0010Module> SelectedModules { get; set; }
 
         #endregion
 
@@ -40,16 +40,14 @@ namespace EtherCAT.NET.Extension
 
         public override void EvaluateSettings()
         {
-            Contract.Requires(SelectedModuleSet != null);
+            Contract.Requires(SelectedModules != null);
 
             if (!(0 < this.StationNumber && this.StationNumber < 127))
-            {
                 throw new Exception(ExtensionErrorMessage.EL6731_0010Settings_StationNumberInvalid);
-            }
 
-            this.SlaveInfo.DynamicData.PdoSet.Clear();
+            this.SlaveInfo.DynamicData.Pdos.Clear();
 
-            foreach (EL6731_0010Module el6731_0010_Module in this.SelectedModuleSet)
+            foreach (EL6731_0010Module el6731_0010_Module in this.SelectedModules)
             {
                 ushort pdoIndex = 0;
                 ushort syncManager = 0;
@@ -57,7 +55,7 @@ namespace EtherCAT.NET.Extension
                 ushort arrayLength = 0;
                 OneDasDataType dataType = default;
                 DataDirection dataDirection = default;
-                List<SlaveVariable> ecSlaveVariableSet = new List<SlaveVariable>();
+                var ecSlaveVariables = new List<SlaveVariable>();
 
                 if ((int)el6731_0010_Module == 0x50) // word ouput
                 {
@@ -127,22 +125,22 @@ namespace EtherCAT.NET.Extension
                         break;
                 }
 
-                SlavePdo slavePdo = new SlavePdo(this.SlaveInfo, el6731_0010_Module.ToString(), pdoIndex, 0, true, true, syncManager);
-                ushort offset = (ushort)this.SlaveInfo.DynamicData.PdoSet.SelectMany(x => x.VariableSet).Where(x => x.DataDirection == dataDirection).Count();
+                var slavePdo = new SlavePdo(this.SlaveInfo, el6731_0010_Module.ToString(), pdoIndex, 0, true, true, syncManager);
+                var offset = (ushort)this.SlaveInfo.DynamicData.Pdos.SelectMany(x => x.Variables).Where(x => x.DataDirection == dataDirection).Count();
 
                 for (ushort i = (ushort)(offset + 0); i <= offset + arrayLength - 1; i++)
                 {
-                    ecSlaveVariableSet.Add(new SlaveVariable(slavePdo, i.ToString(), variableIndex, Convert.ToByte(i + 1), dataDirection, dataType));
+                    ecSlaveVariables.Add(new SlaveVariable(slavePdo, i.ToString(), variableIndex, Convert.ToByte(i + 1), dataDirection, dataType));
                 }
 
-                slavePdo.SetVariableSet(ecSlaveVariableSet);
-                this.SlaveInfo.DynamicData.PdoSet.Add(slavePdo);
+                slavePdo.SetVariables(ecSlaveVariables);
+                this.SlaveInfo.DynamicData.Pdos.Add(slavePdo);
             }
 
             // 1A80 improve! include Variables
-            SlavePdo slavePdo2 = new SlavePdo(this.SlaveInfo, "Diagnostics", 0x1a80, 0, true, true, 3);
-            slavePdo2.SetVariableSet(new List<SlaveVariable>());
-            this.SlaveInfo.DynamicData.PdoSet.Add(slavePdo2);
+            var slavePdo2 = new SlavePdo(this.SlaveInfo, "Diagnostics", 0x1a80, 0, true, true, 3);
+            slavePdo2.SetVariables(new List<SlaveVariable>());
+            this.SlaveInfo.DynamicData.Pdos.Add(slavePdo2);
         }
 
         #endregion

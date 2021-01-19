@@ -43,7 +43,7 @@ namespace EtherCAT.NET.Extension
 
 
 
-            //this.SlaveInfo.DynamicData.PdoSet.Clear();
+            //this.SlaveInfo.DynamicData.Pdos.Clear();
 
             //foreach (EL6751_0010Module el6751_0010_Module in this.SelectedModuleSet)
             //{
@@ -138,7 +138,7 @@ namespace EtherCAT.NET.Extension
             //// 1A80 improve! include Variables
             //SlavePdo slavePdo2 = new SlavePdo(this.SlaveInfo, "Diagnostics", 0x1a80, 0, true, true, 3);
             //slavePdo2.SetVariableSet(new List<SlaveVariable>());
-            //this.SlaveInfo.DynamicData.PdoSet.Add(slavePdo2);
+            //this.SlaveInfo.DynamicData.Pdos.Add(slavePdo2);
 
 
 
@@ -149,33 +149,33 @@ namespace EtherCAT.NET.Extension
 
             SlavePdo slavePdo;
 
-            this.SlaveInfo.DynamicData.PdoSet.Clear();
+            this.SlaveInfo.DynamicData.Pdos.Clear();
 
             // EL6751-0010 (CANopen Slave)_IN
             slavePdo = new SlavePdo(this.SlaveInfo, "EL6751-0010 (CANopen Slave)_IN", 0x1A00, 0, true, true, 0x03);
 
-            slavePdo.SetVariableSet(new List<SlaveVariable>
+            slavePdo.SetVariables(new List<SlaveVariable>
             {
                 new SlaveVariable(slavePdo, "CAN RxPDO 1", 0x6000, 0x01, DataDirection.Input, OneDasDataType.INT8)
             });
 
-            this.SlaveInfo.DynamicData.PdoSet.Add(slavePdo);
+            this.SlaveInfo.DynamicData.Pdos.Add(slavePdo);
 
             // CANopen Status
             slavePdo = new SlavePdo(this.SlaveInfo, "CANopen Status", 0x1A83, 0, true, true, 0x03);
 
-            slavePdo.SetVariableSet(new List<SlaveVariable>
+            slavePdo.SetVariables(new List<SlaveVariable>
             {
                 new SlaveVariable(slavePdo, "CANopenState", 0xF100, 0x01, DataDirection.Input, OneDasDataType.UINT16),
                 new SlaveVariable(slavePdo, "TxPDO State", 0x1800, 0x07, DataDirection.Input, OneDasDataType.BOOLEAN)
             });
 
-            this.SlaveInfo.DynamicData.PdoSet.Add(slavePdo);
+            this.SlaveInfo.DynamicData.Pdos.Add(slavePdo);
 
             // CAN Diagnosis
             slavePdo = new SlavePdo(this.SlaveInfo, "CAN Diagnosis", 0x1A84, 0, true, true, 0x03);
 
-            slavePdo.SetVariableSet(new List<SlaveVariable>
+            slavePdo.SetVariables(new List<SlaveVariable>
             {
                 new SlaveVariable(slavePdo, "Device Diag", 0xF101, 0x0D, DataDirection.Input, OneDasDataType.BOOLEAN),
                 new SlaveVariable(slavePdo, "Sync Error", 0xF101, 0x0E, DataDirection.Input, OneDasDataType.BOOLEAN),
@@ -194,7 +194,7 @@ namespace EtherCAT.NET.Extension
                 new SlaveVariable(slavePdo, "Ack error", 0xF108, 0x05, DataDirection.Input, OneDasDataType.BOOLEAN),
             });
 
-            this.SlaveInfo.DynamicData.PdoSet.Add(slavePdo);
+            this.SlaveInfo.DynamicData.Pdos.Add(slavePdo);
         }
 
         #endregion
