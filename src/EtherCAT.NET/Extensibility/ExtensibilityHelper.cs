@@ -60,18 +60,13 @@ namespace EtherCAT.NET.Extensibility
 
                 foreach (var pdoType in pdoTypes)
                 {
-                    int syncManager;
-                    ushort pdoIndex;
-                    string pdoName;
-                    SlavePdo slavePdo;
-
                     var osMax = Convert.ToUInt16(pdoType.OSMax);
 
                     if (osMax == 0)
                     {
-                        pdoName = pdoType.Name.First().Value;
-                        pdoIndex = (ushort)EsiUtilities.ParseHexDecString(pdoType.Index.Value);
-                        syncManager = pdoType.SmSpecified ? pdoType.Sm : -1;
+                        var pdoName = pdoType.Name.First().Value;
+                        var pdoIndex = (ushort)EsiUtilities.ParseHexDecString(pdoType.Index.Value);
+                        var syncManager = pdoType.SmSpecified ? pdoType.Sm : -1;
 
                         var slavePdo = new SlavePdo(slaveInfo, pdoName, pdoIndex, osMax, pdoType.Fixed, pdoType.Mandatory, syncManager);
 
@@ -91,9 +86,9 @@ namespace EtherCAT.NET.Extensibility
                     {
                         for (ushort indexOffset = 0; indexOffset <= osMax - 1; indexOffset++)
                         {
-                            pdoName = $"{pdoType.Name.First().Value} [{indexOffset}]";
-                            pdoIndex = (ushort)((ushort)EsiUtilities.ParseHexDecString(pdoType.Index.Value) + indexOffset);
-                            syncManager = pdoType.SmSpecified ? pdoType.Sm : -1;
+                            var pdoName = $"{pdoType.Name.First().Value} [{indexOffset}]";
+                            var pdoIndex = (ushort)((ushort)EsiUtilities.ParseHexDecString(pdoType.Index.Value) + indexOffset);
+                            var syncManager = pdoType.SmSpecified ? pdoType.Sm : -1;
                             var indexOffset_Tmp = indexOffset;
 
                             var slavePdo = new SlavePdo(slaveInfo, pdoName, pdoIndex, osMax, pdoType.Fixed, pdoType.Mandatory, syncManager);
