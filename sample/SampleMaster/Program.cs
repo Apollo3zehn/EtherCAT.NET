@@ -1,12 +1,10 @@
 using EtherCAT.NET;
-using EtherCAT.NET.Extensibility;
 using Microsoft.DotNet.PlatformAbstractions;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using OneDas.Extensibility;
 using System;
 using System.IO;
 using System.Linq;
+using System.Net.NetworkInformation;
 using System.Reflection;
 using System.Text;
 using System.Threading;
@@ -17,9 +15,9 @@ namespace SampleMaster
     class Program
     {
         static async Task Main(string[] args)
-        {
+        {          
             /* Set interface name. Edit this to suit your needs. */
-            var interfaceName = "eth0";
+            var interfaceName = "Lokal";
 
             /* Set ESI location. Make sure it contains ESI files! The default path is /home/{user}/.local/share/ESI */
             var localAppDataPath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
@@ -32,56 +30,63 @@ namespace SampleMaster
             Directory.EnumerateFiles(Path.Combine(codeBase, "runtimes"), "*soem_wrapper.*", SearchOption.AllDirectories).ToList().ForEach(filePath =>
             {
                 if (filePath.Contains(RuntimeEnvironment.RuntimeArchitecture))
-                {
                     File.Copy(filePath, Path.Combine(codeBase, Path.GetFileName(filePath)), true);
-                }
             });
 
-            /* prepare dependency injection */
-            var services = new ServiceCollection();
+            /* create logger */
+            var loggerFactory = LoggerFactory.Create(loggingBuilder =>
+            {
+                loggingBuilder.SetMinimumLevel(LogLevel.Debug);
+                loggingBuilder.AddConsole();
+            });
 
-            ConfigureServices(services);
-
-            /* create types */
-            var provider = services.BuildServiceProvider();
-            var extensionFactory = provider.GetRequiredService<IExtensionFactory>();
-            var loggerFactory = provider.GetRequiredService<ILoggerFactory>();
             var logger = loggerFactory.CreateLogger("EtherCAT Master");
 
             /* create EtherCAT master settings (with 10 Hz cycle frequency) */
-            var cycleFrequency = 10U;
-            var settings = new EcSettings(cycleFrequency, esiDirectoryPath, interfaceName);
+            var settings = new EcSettings(cycleFrequency: 10U, esiDirectoryPath, interfaceName);
 
-            /* create root slave info by scanning available slaves */
-            var rootSlaveInfo = EcUtilities.ScanDevices(settings.InterfaceName);
+            /* scan available slaves */
+            var rootSlave = EcUtilities.ScanDevices(settings.InterfaceName);
 
-            rootSlaveInfo.Descendants().ToList().ForEach(current =>
+            rootSlave.Descendants().ToList().ForEach(slave =>
             {
-                ExtensibilityHelper.CreateDynamicData(settings.EsiDirectoryPath, extensionFactory, current);
+                // If you have special extensions for this slave, add it here:                    
+                // slave.Extensions.Add(new MyFancyExtension());
+
+                EcUtilities.CreateDynamicData(settings.EsiDirectoryPath, slave);
             });
 
             /* print list of slaves */
             var message = new StringBuilder();
-            var slaves = rootSlaveInfo.Descendants().ToList();
+            var slaves = rootSlave.Descendants().ToList();
 
             message.AppendLine($"Found {slaves.Count()} slaves:");
 
-            slaves.ForEach(current =>
+            foreach (var slave in slaves)
             {
-                message.AppendLine($"{current.DynamicData.Name} (PDOs: {current.DynamicData.PdoSet.Count} - CSA: { current.Csa })");
-            });
+                message.AppendLine($"{slave.DynamicData.Name} (PDOs: {slave.DynamicData.Pdos.Count} - CSA: {slave.Csa})");
+            }
 
             logger.LogInformation(message.ToString().TrimEnd());
 
             /* create variable references for later use */
-            var variables = slaves.SelectMany(child => child.GetVariableSet()).ToList();
+            var variables = slaves.SelectMany(child => child.GetVariables()).ToList();
 
             /* create EC Master */
-            using (var master = new EcMaster(settings, extensionFactory, logger))
+            using (var master = new EcMaster(settings, logger))
             {
+                // If you want to change SDO values of a certain slave, register a callback:
+                //
+                // EcHL.RegisterCallback(master.Context, slaveIndex /* 1-based indexing */, slaveIndex =>
+                // {
+                //     var returnValue = EcUtilities.SdoWrite(master.Context, slaveIndex, ...);
+                //     EcUtilities.CheckErrorCode(master.Context, returnValue);
+                //     return 0;
+                // });
+
                 try
                 {
-                    master.Configure(rootSlaveInfo);
+                    master.Configure(rootSlave);
                 }
                 catch (Exception ex)
                 {
@@ -95,7 +100,7 @@ namespace SampleMaster
 
                 var task = Task.Run(() =>
                 {
-                    var sleepTime = 1000 / (int)cycleFrequency;
+                    var sleepTime = 1000 / (int)settings.CycleFrequency;
 
                     while (!cts.IsCancellationRequested)
                     {
@@ -120,17 +125,6 @@ namespace SampleMaster
                 cts.Cancel();
                 await task;
             }
-        }
-
-        static void ConfigureServices(IServiceCollection services)
-        {
-            services.AddSingleton<IExtensionFactory, ExtensionFactory>();
-
-            services.AddLogging(loggingBuilder =>
-            {
-                loggingBuilder.SetMinimumLevel(LogLevel.Debug);
-                loggingBuilder.AddConsole();
-            });
         }
     }
 }

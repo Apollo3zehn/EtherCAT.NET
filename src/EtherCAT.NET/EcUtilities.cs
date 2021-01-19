@@ -1,5 +1,5 @@
-﻿using EtherCAT.NET.Infrastructure;
-using OneDas.Infrastructure;
+﻿using EtherCAT.NET.Extension;
+using EtherCAT.NET.Infrastructure;
 using SOEM.PInvoke;
 using System;
 using System.Collections.Generic;
@@ -26,59 +26,60 @@ namespace EtherCAT.NET
 
         #region "Methods"
 
-        public static OneDasDataType GetOneDasDataTypeFromEthercatDataType(string value)
-        {
-            if (value == null)
-                return 0;
-            else
-                return EcUtilities.GetOneDasDataTypeFromEthercatDataType((EthercatDataType)Enum.Parse(typeof(EthercatDataType), value));
-        }
-
-        public static OneDasDataType GetOneDasDataTypeFromEthercatDataType(EthercatDataType ethercatDataType)
+        public static byte GetBitLength(EthercatDataType ethercatDataType)
         {
             switch (ethercatDataType)
             {
                 case EthercatDataType.Boolean:
-                    return OneDasDataType.BOOLEAN;
+                    return 1;
 
                 case EthercatDataType.Unsigned8:
-                    return OneDasDataType.UINT8;
+                    return 8;
 
                 case EthercatDataType.Integer8:
-                    return OneDasDataType.INT8;
+                    return 8;
 
                 case EthercatDataType.Unsigned16:
-                    return OneDasDataType.UINT16;
+                    return 16;
 
                 case EthercatDataType.Integer16:
-                    return OneDasDataType.INT16;
+                    return 16;
 
                 case EthercatDataType.Unsigned32:
-                    return OneDasDataType.UINT32;
+                    return 32;
 
                 case EthercatDataType.Integer32:
-                    return OneDasDataType.INT32;
+                    return 32;
 
                 case EthercatDataType.Unsigned64:
-                    return OneDasDataType.UINT64;
+                    return 64;
 
                 case EthercatDataType.Integer64:
-                    return OneDasDataType.INT64;
+                    return 64;
 
                 case EthercatDataType.Float32:
-                    return OneDasDataType.FLOAT32;
+                    return 32;
 
                 case EthercatDataType.Float64:
-                    return OneDasDataType.FLOAT64;
+                    return 64;
 
-                default:
+                default: // other data types are currently not supported - could return 0 cause IO map issues?
                     return 0;
             }
         }
 
-        public static IEnumerable<T> TrueDistinct<T>(this IEnumerable<T> inputSet)
+
+        public static EthercatDataType ParseEtherCatDataType(string value)
         {
-            return inputSet.GroupBy(x => x).Where(x => x.Count() == 1).SelectMany(x => x);
+            if (value == null)
+                return 0;
+            else
+                return (EthercatDataType)Enum.Parse(typeof(EthercatDataType), value);
+        }
+
+        public static IEnumerable<T> TrueDistinct<T>(this IEnumerable<T> inputs)
+        {
+            return inputs.GroupBy(x => x).Where(x => x.Count() == 1).SelectMany(x => x);
         }
 
         public static byte[] ToByteArray(this object value)
@@ -106,38 +107,30 @@ namespace EtherCAT.NET
         {
             if (errorCode <= 0)
             {
-                string message_server;
-                string message_SOEM = string.Empty;
-                string message_combined = string.Empty;
-
                 errorCode = -errorCode;
 
-                // message_server
-                message_server = ErrorMessage.ResourceManager.GetString($"Native_0x{ errorCode.ToString("X4") }");
+                // message_managed
+                var message_managed = ErrorMessage.ResourceManager.GetString($"Native_0x{ errorCode.ToString("X4") }");
 
-                if (string.IsNullOrWhiteSpace(message_server))
-                {
-                    message_server = ErrorMessage.Native_0xFFFF;
-                }
+                if (string.IsNullOrWhiteSpace(message_managed))
+                    message_managed = ErrorMessage.Native_0xFFFF;
 
                 // message_SOEM
+                var message_SOEM = string.Empty;
+
                 while (EcHL.HasEcError(context))
                 {
                     if (!string.IsNullOrWhiteSpace(message_SOEM))
-                    {
                         message_SOEM += "\n";
-                    }
 
                     message_SOEM += Marshal.PtrToStringAnsi(EcHL.GetNextError(context));
                 }
 
                 // message_combined
-                message_combined = $"{ callerMemberName } failed (0x{ errorCode.ToString("X4") }): { message_server }";
+                var message_combined = $"{ callerMemberName } failed (0x{ errorCode.ToString("X4") }): { message_managed }";
 
                 if (!string.IsNullOrWhiteSpace(message_SOEM))
-                {
                     message_combined += $"\n\nEtherCAT message:\n\n{ message_SOEM }";
-                }
 
                 throw new Exception(message_combined);
             }
@@ -145,19 +138,155 @@ namespace EtherCAT.NET
 
         public static Dictionary<string, string> GetAvailableNetworkInterfaces()
         {
-            return NetworkInterface.GetAllNetworkInterfaces().Where(x => x.NetworkInterfaceType == NetworkInterfaceType.Ethernet).ToDictionary(x => x.Description, x => x.GetPhysicalAddress().ToString());
+            return NetworkInterface.GetAllNetworkInterfaces()
+                .Where(x => x.NetworkInterfaceType == NetworkInterfaceType.Ethernet)
+                .ToDictionary(x => x.Description, x => x.GetPhysicalAddress()
+                .ToString());
         }
 
-        public static SlaveInfo ScanDevices(string interfaceName, SlaveInfo referenceSlaveInfo = null)
+        public static void CreateDynamicData(string esiDirectoryPath, SlaveInfo slave)
         {
-            IntPtr context;
-            SlaveInfo slaveInfo;
+            // find ESI
+            if (slave.Csa != 0)
+                (slave.Esi, slave.EsiGroup) = EsiUtilities.FindEsi(esiDirectoryPath, slave.Manufacturer, slave.ProductCode, slave.Revision);
 
-            context = EcHL.CreateContext();
-            slaveInfo = EcUtilities.ScanDevices(context, interfaceName, referenceSlaveInfo);
+            //
+            var pdos = new List<SlavePdo>();
+            var base64ImageData = new byte[] { };
+
+            var name = slave.Esi.Type.Value;
+            var description = slave.Esi.Name.FirstOrDefault()?.Value;
+
+            if (description.StartsWith(name))
+                description = description.Substring(name.Length);
+
+            else if (string.IsNullOrWhiteSpace(description))
+                description = "no description available";
+
+            // PDOs
+            foreach (DataDirection dataDirection in Enum.GetValues(typeof(DataDirection)))
+            {
+                IEnumerable<PdoType> pdoTypes = null;
+
+                switch (dataDirection)
+                {
+                    case DataDirection.Output:
+                        pdoTypes = slave.Esi.RxPdo;
+                        break;
+                    case DataDirection.Input:
+                        pdoTypes = slave.Esi.TxPdo;
+                        break;
+                }
+
+                foreach (var pdoType in pdoTypes)
+                {
+                    var osMax = Convert.ToUInt16(pdoType.OSMax);
+
+                    if (osMax == 0)
+                    {
+                        var pdoName = pdoType.Name.First().Value;
+                        var pdoIndex = (ushort)EsiUtilities.ParseHexDecString(pdoType.Index.Value);
+                        var syncManager = pdoType.SmSpecified ? pdoType.Sm : -1;
+
+                        var slavePdo = new SlavePdo(slave, pdoName, pdoIndex, osMax, pdoType.Fixed, pdoType.Mandatory, syncManager);
+
+                        pdos.Add(slavePdo);
+
+                        var slaveVariables = pdoType.Entry.Select(x =>
+                        {
+                            var variableIndex = (ushort)EsiUtilities.ParseHexDecString(x.Index.Value);
+                            var subIndex = Convert.ToByte(x.SubIndex);
+                            //// Improve. What about -1 if SubIndex does not exist?
+                            return new SlaveVariable(slavePdo, x.Name?.FirstOrDefault()?.Value, variableIndex, subIndex, dataDirection, EcUtilities.ParseEtherCatDataType(x.DataType?.Value), (byte)x.BitLen);
+                        }).ToList();
+
+                        slavePdo.SetVariables(slaveVariables);
+                    }
+                    else
+                    {
+                        for (ushort indexOffset = 0; indexOffset <= osMax - 1; indexOffset++)
+                        {
+                            var pdoName = $"{pdoType.Name.First().Value} [{indexOffset}]";
+                            var pdoIndex = (ushort)((ushort)EsiUtilities.ParseHexDecString(pdoType.Index.Value) + indexOffset);
+                            var syncManager = pdoType.SmSpecified ? pdoType.Sm : -1;
+                            var indexOffset_Tmp = indexOffset;
+
+                            var slavePdo = new SlavePdo(slave, pdoName, pdoIndex, osMax, pdoType.Fixed, pdoType.Mandatory, syncManager);
+
+                            pdos.Add(slavePdo);
+
+                            var slaveVariables = pdoType.Entry.Select(x =>
+                            {
+                                var variableIndex = (ushort)EsiUtilities.ParseHexDecString(x.Index.Value);
+                                var subIndex = (byte)(byte.Parse(x.SubIndex) + indexOffset_Tmp);
+                                //// Improve. What about -1 if SubIndex does not exist?
+                                return new SlaveVariable(slavePdo, x.Name.FirstOrDefault()?.Value, variableIndex, subIndex, dataDirection, EcUtilities.ParseEtherCatDataType(x.DataType?.Value), (byte)x.BitLen);
+                            }).ToList();
+
+                            slavePdo.SetVariables(slaveVariables);
+                        }
+                    }
+                }
+            }
+
+            // image data
+            if (slave.EsiGroup.ItemElementName == ItemChoiceType1.ImageData16x14)
+                base64ImageData = (byte[])slave.EsiGroup.Item;
+
+            if (slave.Esi.ItemElementName.ToString() == nameof(ItemChoiceType1.ImageData16x14))
+                base64ImageData = (byte[])slave.Esi.Item;
+
+            // attach dynamic data
+            slave.DynamicData = new SlaveInfoDynamicData(name, description, pdos, base64ImageData);
+
+            // add DC extension to extensions
+            if (slave.Esi.Dc is not null
+            && !slave.Extensions.Any(extension => extension.GetType() == typeof(DistributedClocksExtension)))
+            {
+                slave.Extensions.Add(new DistributedClocksExtension(slave));
+            }
+
+            // execute extension logic
+            slave.Extensions.ToList().ForEach(extension =>
+            {
+                extension.EvaluateSettings();
+            });
+        }
+
+        public static SlaveInfo RescanDevices(EcSettings settings, SlaveInfo referenceRootSlave)
+        {
+            var referenceSlaves = default(IEnumerable<SlaveInfo>);
+
+            if (referenceRootSlave != null)
+                referenceSlaves = referenceRootSlave.Descendants().ToList();
+
+            var newRootSlave = EcUtilities.ScanDevices(settings.InterfaceName, referenceRootSlave);
+
+            newRootSlave.Descendants().ToList().ForEach(slave =>
+            {
+                var referenceSlave = slave.Csa == slave.OldCsa
+                    ? referenceSlaves?.FirstOrDefault(x => x.Csa == slave.Csa)
+                    : null;
+
+                if (referenceSlave != null)
+                    slave.Extensions = referenceSlave.Extensions;
+
+                EcUtilities.CreateDynamicData(settings.EsiDirectoryPath, slave);
+            });
+
+            return newRootSlave;
+        }
+
+        public static SlaveInfo ScanDevices(string interfaceName, SlaveInfo referenceRootSlave = null)
+        {
+            if (NetworkInterface.GetAllNetworkInterfaces().Where(x => x.Name == interfaceName).FirstOrDefault()?.OperationalStatus != OperationalStatus.Up)
+                throw new Exception($"The network interface '{interfaceName}' is not linked. Aborting action.");
+
+            var context = EcHL.CreateContext();
+            var rootSlave = EcUtilities.ScanDevices(context, interfaceName, referenceRootSlave);
             EcHL.FreeContext(context);
 
-            return slaveInfo;
+            return rootSlave;
         }
 
         /// <summary>
@@ -165,75 +294,59 @@ namespace EtherCAT.NET
         /// </summary>
         /// <param name="interfaceName">The name of the network adapter.</param>
         /// <returns>Returns found slave.</returns>
-        public static SlaveInfo ScanDevices(IntPtr context, string interfaceName, SlaveInfo referenceSlaveInfo = null)
+        public static SlaveInfo ScanDevices(IntPtr context, string interfaceName, SlaveInfo referenceSlave = null)
         {
-            int offset;
-            int slaveCount;
+            ec_slave_info_t[] refSlaveIdentifications = null;
 
-            NetworkInterface networkInterface;
-            ec_slave_info_t[] newSlaveIdentificationSet;
-            ec_slave_info_t[] refSlaveIdentificationSet;
-            IntPtr slaveIdentificationSet;
-
-            //
-            offset = 0;
-
-            networkInterface = NetworkInterface.GetAllNetworkInterfaces().Where(nic => nic.Name == interfaceName).FirstOrDefault();
-
-            newSlaveIdentificationSet = null;
-
-            if (referenceSlaveInfo != null)
-            {
-                refSlaveIdentificationSet = EcUtilities.ToSlaveIdentificationSet(referenceSlaveInfo);
-            }
+            if (referenceSlave != null)
+                refSlaveIdentifications = EcUtilities.ToSlaveIdentifications(referenceSlave);
             else
-            {
-                refSlaveIdentificationSet = new ec_slave_info_t[] { };
-            }
+                refSlaveIdentifications = new ec_slave_info_t[] { };
 
             // scan devices
+            var networkInterface = NetworkInterface
+                .GetAllNetworkInterfaces()
+                .Where(nic => nic.Name == interfaceName)
+                .FirstOrDefault();
+
             if (networkInterface == null)
-            {
                 throw new Exception($"{ ErrorMessage.SoemWrapper_NetworkInterfaceNotFound } Interface name: '{ interfaceName }'.");
-            }
 
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                 interfaceName = $@"rpcap://\Device\NPF_{networkInterface.Id}";
+
             else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
                 interfaceName = $"{interfaceName}";
+
             else
                 throw new PlatformNotSupportedException();
 
-            EcUtilities.CheckErrorCode(context, EcHL.ScanDevices(context, interfaceName, out slaveIdentificationSet, out slaveCount));
+            EcUtilities.CheckErrorCode(context, EcHL.ScanDevices(context, interfaceName, out var slaveIdentifications, out var slaveCount));
 
             // create slaveInfo from received data
-            newSlaveIdentificationSet = new ec_slave_info_t[slaveCount + 1]; // correct because EC master = slaveIdentificationSet[0]
+            var offset = 0;
+            var newSlaveIdentifications = new ec_slave_info_t[slaveCount + 1]; // correct because EC master = slaveIdentifications[0]
 
-            for (int i = 0; i <= newSlaveIdentificationSet.Count() - 1; i++)
+            for (int i = 0; i <= newSlaveIdentifications.Count() - 1; i++)
             {
-                newSlaveIdentificationSet[i] = Marshal.PtrToStructure<ec_slave_info_t>(IntPtr.Add(slaveIdentificationSet, offset));
+                newSlaveIdentifications[i] = Marshal.PtrToStructure<ec_slave_info_t>(IntPtr.Add(slaveIdentifications, offset));
                 offset += Marshal.SizeOf(typeof(ec_slave_info_t));
             }
 
             // validate CSA
-            while (EcUtilities.EnsureValidCsa(context, newSlaveIdentificationSet, refSlaveIdentificationSet))
+            while (EcUtilities.EnsureValidCsa(context, newSlaveIdentifications, refSlaveIdentifications))
             {
                 //
             }
 
-            return EcUtilities.ToSlaveInfo(newSlaveIdentificationSet);
+            return EcUtilities.ToSlaveInfo(newSlaveIdentifications);
         }
 
         public static SlavePdo[] UploadPdoConfig(IntPtr context, UInt16 slave, UInt16 smIndex)
         {
-            int pdoCount;
-            IntPtr ecPdoInfoPtrSet;
-            SlavePdo[] slavePdoSet;
-            SyncManagerType syncManagerType;
-            DataDirection dataDirection;
+            EcHL.GetSyncManagerType(context, slave, smIndex, out var syncManagerType);
 
-            //
-            EcHL.GetSyncManagerType(context, slave, smIndex, out syncManagerType);
+            DataDirection dataDirection;
 
             switch (syncManagerType)
             {
@@ -249,42 +362,34 @@ namespace EtherCAT.NET
                     throw new ArgumentException();
             }
 
-            EcHL.UploadPdoConfig(context, slave, smIndex, out ecPdoInfoPtrSet, out pdoCount);
+            EcHL.UploadPdoConfig(context, slave, smIndex, out var ecPdoInfoPtrs, out var pdoCount);
 
-            slavePdoSet = Enumerable.Range(0, pdoCount).Select(index =>
+            var slavePdos = Enumerable.Range(0, pdoCount).Select(index =>
             {
-                ec_pdo_info_t ecPdoInfo;
-                SlavePdo slavePdo;
-                IntPtr ecPdoInfoPtr;
+                var ecPdoInfoPtr = IntPtr.Add(ecPdoInfoPtrs, index * Marshal.SizeOf(typeof(ec_pdo_info_t)));
+                var ecPdoInfo = Marshal.PtrToStructure<ec_pdo_info_t>(ecPdoInfoPtr);
+                var slavePdo = new SlavePdo(null, ecPdoInfo.name, ecPdoInfo.index, 0, true, true, smIndex - 0x1C10);
 
-                ecPdoInfoPtr = IntPtr.Add(ecPdoInfoPtrSet, index * Marshal.SizeOf(typeof(ec_pdo_info_t)));
-                ecPdoInfo = Marshal.PtrToStructure<ec_pdo_info_t>(ecPdoInfoPtr);
-                slavePdo = new SlavePdo(null, ecPdoInfo.name, ecPdoInfo.index, 0, true, true, smIndex - 0x1C10);
-
-                slavePdo.SetVariableSet(Enumerable.Range(0, ecPdoInfo.variableCount).Select(index2 =>
+                slavePdo.SetVariables(Enumerable.Range(0, ecPdoInfo.variableCount).Select(index2 =>
                 {
-                    ec_variable_info_t ecVariableInfo;
-                    SlaveVariable slaveVariable;
-                    IntPtr ecVariableInfoPtr;
-
-                    ecVariableInfoPtr = IntPtr.Add(ecPdoInfo.variableInfoSet, index2 * Marshal.SizeOf(typeof(ec_variable_info_t)));
-                    ecVariableInfo = Marshal.PtrToStructure<ec_variable_info_t>(ecVariableInfoPtr);
-                    slaveVariable = new SlaveVariable(slavePdo, ecVariableInfo.name, ecVariableInfo.index, ecVariableInfo.subIndex, dataDirection, EcUtilities.GetOneDasDataTypeFromEthercatDataType(ecVariableInfo.dataType));
+                    var ecVariableInfoPtr = IntPtr.Add(ecPdoInfo.variableInfos, index2 * Marshal.SizeOf(typeof(ec_variable_info_t)));
+                    var ecVariableInfo = Marshal.PtrToStructure<ec_variable_info_t>(ecVariableInfoPtr);
+                    var slaveVariable = new SlaveVariable(slavePdo, ecVariableInfo.name, ecVariableInfo.index, ecVariableInfo.subIndex, dataDirection, ecVariableInfo.dataType);
 
                     return slaveVariable;
                 }).ToList());
 
-                EcHL.Free(ecPdoInfo.variableInfoSet);
+                EcHL.Free(ecPdoInfo.variableInfos);
 
                 return slavePdo;
             }).ToArray();
 
-            EcHL.Free(ecPdoInfoPtrSet);
+            EcHL.Free(ecPdoInfoPtrs);
 
-            return slavePdoSet;
+            return slavePdos;
         }
 
-        private static bool EnsureValidCsa(IntPtr context, ec_slave_info_t[] newSlaveSet, ec_slave_info_t[] referenceSlaveSet)
+        private static bool EnsureValidCsa(IntPtr context, ec_slave_info_t[] newSlaves, ec_slave_info_t[] referenceSlaves)
         {
             // UPDATE: first step ('isValid') is skipped as CSA is now generated randomly. This function returns now a boolean to indicate success.
             //
@@ -349,65 +454,48 @@ namespace EtherCAT.NET
 
             //SoemWrapper.ValidateCsa(newset, reference);
 
-            ec_slave_info_t[] totalSlaveSet;
-            ec_slave_info_t[] newSlaveSetDistinct;
-            ec_slave_info_t referenceSlave;
+            var totalSlaves = newSlaves.Concat(referenceSlaves).ToArray();
+            var totalSlavesCsaDistinct = totalSlaves.Select(x => x.csa).TrueDistinct().ToArray();
+            var newSlavesDistinct = newSlaves.TrueDistinct().ToArray();
+            var referenceSlavesCsaDistinct = referenceSlaves.Select(x => x.csa).TrueDistinct().ToArray();
+            var hasCsaChanged = false;
 
-            ushort[] totalSlaveSetCsaDistinct;
-            ushort[] referenceSlaveSetCsaDistinct;
-            ushort csaValue;
-
-            bool isValid;
-            bool hasUniqueCsa;
-            bool toBeProtected;
-            bool hasRef;
-            bool isDistinct;
-            bool hasUniqueCsa_ref;
-            bool hasCsaChanged;
-
-            //
-            totalSlaveSet = newSlaveSet.Concat(referenceSlaveSet).ToArray();
-            totalSlaveSetCsaDistinct = totalSlaveSet.Select(x => x.csa).TrueDistinct().ToArray();
-            newSlaveSetDistinct = newSlaveSet.TrueDistinct().ToArray();
-            referenceSlaveSetCsaDistinct = referenceSlaveSet.Select(x => x.csa).TrueDistinct().ToArray();
-            hasCsaChanged = false;
-
-            for (int i = 0; i < newSlaveSet.Count(); i++)
+            for (int i = 0; i < newSlaves.Count(); i++)
             {
-                ec_slave_info_t newSlave = newSlaveSet[i];
+                ec_slave_info_t newSlave = newSlaves[i];
 
                 // 1. - isValid
-                isValid = true; // isValid = newSlave.csa > 0 && newSlave.csa < originalCsaBase;
+                var isValid = true; // isValid = newSlave.csa > 0 && newSlave.csa < originalCsaBase;
 
                 // 2. - hasUniqueCsa
-                hasUniqueCsa = totalSlaveSetCsaDistinct.Contains(newSlave.csa);
+                var hasUniqueCsa = totalSlavesCsaDistinct.Contains(newSlave.csa);
 
                 // 3. - toBeProtected
 
                 // => hasRef
-                referenceSlave = referenceSlaveSet.FirstOrDefault(x => x.csa == newSlave.csa);
+                var referenceSlave = referenceSlaves.FirstOrDefault(x => x.csa == newSlave.csa);
 
-                hasRef = referenceSlave.csa == newSlave.csa &&
-                         referenceSlave.manufacturer == newSlave.manufacturer &&
-                         referenceSlave.productCode == newSlave.productCode &&
-                         referenceSlave.revision == newSlave.revision;
+                var hasRef = referenceSlave.csa == newSlave.csa &&
+                             referenceSlave.manufacturer == newSlave.manufacturer &&
+                             referenceSlave.productCode == newSlave.productCode &&
+                             referenceSlave.revision == newSlave.revision;
 
                 // => isDistinct
-                isDistinct = newSlaveSetDistinct.Contains(newSlave);
+                var isDistinct = newSlavesDistinct.Contains(newSlave);
 
                 // => hasUniqueCsa_ref
-                hasUniqueCsa_ref = referenceSlaveSetCsaDistinct.Contains(newSlave.csa);
+                var hasUniqueCsa_ref = referenceSlavesCsaDistinct.Contains(newSlave.csa);
 
                 // => toBeProtected 
-                toBeProtected = hasRef && isDistinct && hasUniqueCsa_ref;
+                var toBeProtected = hasRef && isDistinct && hasUniqueCsa_ref;
 
                 // 4. Combination
                 if (i > 0 && !(isValid && (hasUniqueCsa || toBeProtected)))
                 {
-                    csaValue = (ushort)_random.Next(1, ushort.MaxValue);
-                    EcHL.UpdateCsa(context, newSlaveSet.ToList().IndexOf(newSlave), csaValue);
+                    var csaValue = (ushort)_random.Next(1, ushort.MaxValue);
+                    EcHL.UpdateCsa(context, newSlaves.ToList().IndexOf(newSlave), csaValue);
                     newSlave.csa = csaValue;
-                    newSlaveSet[i] = newSlave;
+                    newSlaves[i] = newSlave;
                     hasCsaChanged = true;
                 }
             }
@@ -415,78 +503,67 @@ namespace EtherCAT.NET
             return hasCsaChanged;
         }
 
-        private static SlaveInfo ToSlaveInfo(IList<ec_slave_info_t> slaveIdentificationSet)
+        private static SlaveInfo ToSlaveInfo(IList<ec_slave_info_t> slaveIdentifications)
         {
-            List<SlaveInfo> slaveInfoSet;
+            var slaves = new List<SlaveInfo>();
 
-            slaveInfoSet = new List<SlaveInfo>();
-
-            for (int i = 0; i < slaveIdentificationSet.Count(); i++)
+            for (int i = 0; i < slaveIdentifications.Count(); i++)
             {
-                SlaveInfo currentSlaveInfo;
+                SlaveInfo currentSlave;
 
-                currentSlaveInfo = new SlaveInfo(slaveIdentificationSet[i]);
+                currentSlave = new SlaveInfo(slaveIdentifications[i]);
 
                 if (i > 0)
-                {
-                    slaveInfoSet[slaveIdentificationSet[i].parentIndex].ChildSet.Add(currentSlaveInfo);
-                }
+                    slaves[slaveIdentifications[i].parentIndex].Children.Add(currentSlave);
 
-                slaveInfoSet.Add(currentSlaveInfo);
+                slaves.Add(currentSlave);
             }
 
-            return slaveInfoSet.First();
+            return slaves.First();
         }
 
-        private static ec_slave_info_t[] ToSlaveIdentificationSet(SlaveInfo slaveInfo)
+        private static ec_slave_info_t[] ToSlaveIdentifications(SlaveInfo slave)
         {
-            List<ec_slave_info_t> slaveIdentificationSet;
+            var slaveIdentifications = slave.Descendants().ToList().Select(x => new ec_slave_info_t(x)).ToList();
+            slaveIdentifications.Insert(0, new ec_slave_info_t(slave));
 
-            slaveIdentificationSet = slaveInfo.Descendants().ToList().Select(x => new ec_slave_info_t(x)).ToList();
-            slaveIdentificationSet.Insert(0, new ec_slave_info_t(slaveInfo));
-
-            return slaveIdentificationSet.ToArray();
+            return slaveIdentifications.ToArray();
         }
 
-        /// <summary>
-        /// Gathers information about the current status of the requested list of <see cref="SlaveInfo"/>.
-        /// </summary>
-        /// <param name="SlaveInfoSet">The list of <see cref="SlaveInfo"/>.</param>
-        /// <returns>Returns information about the current status of the requested list of <see cref="SlaveInfo"/>.</returns>
-        public static string GetSlaveStateDescription(IntPtr context, IEnumerable<SlaveInfo> slaveInfoSet)
+        public static string GetSlaveStateDescription(IntPtr context, IEnumerable<SlaveInfo> slaves)
         {
-            StringBuilder slaveStateDescription = new StringBuilder();
-            ushort slaveIndex = 0;
-            ushort requestedState = 0;
-            ushort actualState = 0;
-            ushort alStatusCode = 0;
-            ushort speedCounterDifference = 0;
-            ushort outputPdoCount = 0;
-            ushort inputPdoCount = 0;
-            int systemTimeDifference = 0;
-            int returnValue = 0;
+            var slaveStateDescription = new StringBuilder();
 
-            foreach (SlaveInfo slaveInfo in slaveInfoSet)
+            foreach (var slave in slaves)
             {
-                slaveIndex = Convert.ToUInt16(slaveInfoSet.ToList().IndexOf(slaveInfo) + 1);
+                var slaveIndex = Convert.ToUInt16(slaves.ToList().IndexOf(slave) + 1);
 
                 // Since the registers 0x092c and 0x0932 cannot be read always, the value will be reset before
-                systemTimeDifference = int.MaxValue;
-                speedCounterDifference = ushort.MaxValue;
+                var systemTimeDifference = int.MaxValue;
+                var speedCounterDifference = ushort.MaxValue;
 
-                returnValue = EcHL.ReadSlaveState(context, slaveIndex, ref requestedState, ref actualState, ref alStatusCode, ref systemTimeDifference, ref speedCounterDifference, ref outputPdoCount, ref inputPdoCount);
+                ushort requestedState = 0;
+                ushort actualState = 0;
+                ushort alStatusCode = 0;
+                ushort outputPdoCount = 0;
+                ushort inputPdoCount = 0;
+
+                var returnValue = EcHL.ReadSlaveState(context, slaveIndex, ref requestedState, ref actualState, ref alStatusCode, ref systemTimeDifference, ref speedCounterDifference, ref outputPdoCount, ref inputPdoCount);
 
                 // ActualState <> RequestedState OrElse AlStatusCode > 0x0 Then
                 if (true)
                 {
                     if (returnValue < 0)
                     {
-                        slaveStateDescription.AppendLine($"-- Error reading data ({slaveInfo.DynamicData.Name}) --");
+                        slaveStateDescription.AppendLine($"-- Error reading data ({slave.DynamicData.Name}) --");
                     }
                     else
                     {
-                        string hasCompleteAccess = slaveInfo.SlaveEsi.Mailbox?.CoE?.CompleteAccess == true ? " True" : "False";
-                        slaveStateDescription.AppendLine($"Slave {slaveIndex,3} | CA: {hasCompleteAccess} | Req-State: 0x{requestedState:X4} | Act-State: 0x{actualState:X4} | AL-Status: 0x{alStatusCode:X4} | Sys-Time Diff: 0x{systemTimeDifference:X8} | Speed Counter Diff: 0x{speedCounterDifference:X4} | #Pdo out: {outputPdoCount} | #Pdo in: {inputPdoCount} | ({slaveInfo.DynamicData.Name})");
+                        string hasCompleteAccess = slave.Esi.Mailbox?.CoE?.CompleteAccess == true 
+                            ? " True" 
+                            : "False";
+
+                        slaveStateDescription.AppendLine($"Slave {slaveIndex,3} | CA: {hasCompleteAccess} | Req-State: 0x{requestedState:X4} | Act-State: 0x{actualState:X4} | AL-Status: 0x{alStatusCode:X4} | Sys-Time Diff: 0x{systemTimeDifference:X8} | Speed Counter Diff: 0x{speedCounterDifference:X4} | #Pdo out: {outputPdoCount} | #Pdo in: {inputPdoCount} | ({slave.DynamicData.Name})");
                     }
                 }
             }

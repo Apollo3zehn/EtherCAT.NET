@@ -35,16 +35,16 @@ The master can be operated without having a list of slaves. In that case, it sca
     ```
 2. Scan the list of connected slaves
     ```cs
-    var rootSlaveInfo = EcUtilities.ScanDevices(<network interface name>);
+    var rootSlave = EcUtilities.ScanDevices(<network interface name>);
     ```
 
-The returned ```rootSlaveInfo``` is the master itself, which holds child slaves in its ```SlaveInfoSet``` property)
+The returned ```rootSlave``` is the master itself, which holds child slaves in its `Children` / `Descendants` property)
 After that, the found slaves should be populated with ESI information:
 
 ```cs
-rootSlaveInfo.Descendants().ToList().ForEach(current =>
+rootSlave.Descendants().ToList().ForEach(slave =>
 {
-    ExtensibilityHelper.CreateDynamicData(settings.EsiDirectoryPath, extensionFactory, current);
+    ExtensibilityHelper.CreateDynamicData(settings.EsiDirectoryPath, slave);
 });
     
 ```
@@ -55,13 +55,13 @@ This master works differently to TwinCAT in that the slaves are identified using
 
 ```cs
 var message = new StringBuilder();
-var slaves = rootSlaveInfo.Descendants().ToList();
+var slaves = rootSlave.Descendants().ToList();
 
 message.AppendLine($"Found {slaves.Count()} slaves:");
 
 slaves.ForEach(current =>
 {
-    message.AppendLine($"{current.DynamicData.Name} (PDOs: {current.DynamicData.PdoSet.Count} - CSA: { current.Csa })");
+    message.AppendLine($"{current.DynamicData.Name} (PDOs: {current.DynamicData.Pdos.Count} - CSA: { current.Csa })");
 });
 
 logger.LogInformation(message.ToString().TrimEnd());
@@ -70,7 +70,7 @@ logger.LogInformation(message.ToString().TrimEnd());
 Now, if the hardware slave order is changed, the individual slaves can be identified by:
 
 ```cs
-var slaves = rootSlaveInfo.Descendants().ToList();
+var slaves = rootSlave.Descendants().ToList();
 var EL1008 = slaves.FirstOrDefault(current => current.Csa == 3);
 ```
 
@@ -85,14 +85,14 @@ var EL1008 = slaves[1];
 When you have a reference to a slave, the PDOs can be accessed via the ```DynamicData``` property:
 
 ```cs
-var pdos = slaves[0].DynamicData.PdoSet;
+var pdos = slaves[0].DynamicData.Pdos;
 var channel0 = pdo[0];
 ```
 
 Since a PDO is a group of variables, these can be found below the PDO:
 
 ```cs
-var variables = pdo.VariableSet;
+var variables = pdo.Variables;
 var variable0 = variables[0];
 ```
 
@@ -118,7 +118,7 @@ The first startup may take a while since an ESI cache is built to speed-up subse
 With the ```EcSettings``` object and a few more types (like ```ILogger```, see the sample), the master can be put in operation using:
 
 ```cs
-using (var master = new EcMaster(rootSlaveInfo, settings, extensionFactory, logger))
+using (var master = new EcMaster(rootSlave, settings, extensionFactory, logger))
 {
     master.Configure();
 
@@ -141,7 +141,7 @@ var timer = new RtTimer();
 
 using (var master = new EcMaster(settings, extensionFactory, logger))
 {
-    master.Configure(rootSlaveInfo);
+    master.Configure(rootSlave);
     timer.Start(interval, timeShift, UpdateIO);
 
     void UpdateIO()

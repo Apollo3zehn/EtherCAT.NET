@@ -9,6 +9,6 @@ namespace EtherCAT.NET.Infrastructure
         public UInt16 index;
         public string name;
         public int variableCount;
-        public IntPtr variableInfoSet;
+        public IntPtr variableInfos;
     }
 }

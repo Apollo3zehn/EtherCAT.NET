@@ -1,10 +1,8 @@
 ﻿using EtherCAT.NET.Infrastructure;
 using System;
-using System.Runtime.Serialization;
 
 namespace EtherCAT.NET.Extension
 {
-    [DataContract]
     public class DistributedClocksOpMode
     {
         public DistributedClocksOpMode(DeviceTypeDCOpMode opMode)
@@ -35,43 +33,27 @@ namespace EtherCAT.NET.Extension
             this.ShiftTimeSync1_Input = Convert.ToBoolean(opMode.ShiftTimeSync1?.Input);
         }
 
-        [DataMember]
         public string Name { get; private set; }
-        [DataMember]
         public string Description { get; private set; }
 
         // Cyclic mode
-        [DataMember]
         public bool CycleTimeSyncUnit_IsEnabled { get; private set; }
-        [DataMember]
         public int CycleTimeSyncUnit { get; private set; }
 
         // SYNC 0
-        [DataMember]
         public bool CycleTimeSync0_IsEnabled { get; private set; }
-        [DataMember]
         public int CycleTimeSync0 { get; private set; }
-        [DataMember]
         public int CycleTimeSync0_Factor { get; private set; }
-        [DataMember]
         public int ShiftTimeSync0 { get; private set; }
-        [DataMember]
         public int ShiftTimeSync0_Factor { get; private set; }
-        [DataMember]
         public bool ShiftTimeSync0_Input { get; private set; }
 
         // SYNC 1
-        [DataMember]
         public bool CycleTimeSync1_IsEnabled { get; private set; }
-        [DataMember]
         public int CycleTimeSync1 { get; private set; }
-        [DataMember]
         public int CycleTimeSync1_Factor { get; private set; }
-        [DataMember]
         public int ShiftTimeSync1 { get; private set; }
-        [DataMember]
         public int ShiftTimeSync1_Factor { get; private set; }
-        [DataMember]
         public bool ShiftTimeSync1_Input { get; private set; }
     }
 }

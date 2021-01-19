@@ -1,19 +1,13 @@
 ﻿using System.Collections.Generic;
-using System.Diagnostics.Contracts;
-using System.Runtime.Serialization;
 
 namespace EtherCAT.NET.Infrastructure
 {
-    [DataContract]
     public class SlavePdo
     {
         #region "Constructors"
 
         public SlavePdo(SlaveInfo parent, string name, ushort index, ushort osMax, bool isFixed, bool isMandatory, int syncManager)
         {
-            Contract.Requires(parent != null);
-            Contract.Requires(syncManager >= 0);
-
             this.Parent = parent;
             this.Name = name;
             this.Index = index;
@@ -29,10 +23,8 @@ namespace EtherCAT.NET.Infrastructure
 
         public SlaveInfo Parent { get; private set; }
 
-        [DataMember]
         public string Name { get; private set; }
 
-        [DataMember]
         public ushort Index { get; private set; }
 
         public ushort OsMax { get; private set; }
@@ -41,21 +33,17 @@ namespace EtherCAT.NET.Infrastructure
 
         public bool IsMandatory { get; private set; }
 
-        [DataMember]
         public int SyncManager { get; set; }
 
-        [DataMember]
-        public IList<SlaveVariable> VariableSet { get; private set; }
+        public IList<SlaveVariable> Variables { get; private set; }
 
         #endregion
 
         #region "Methods"
 
-        public void SetVariableSet(IList<SlaveVariable> variableSet)
+        public void SetVariables(IList<SlaveVariable> variables)
         {
-            Contract.Requires(variableSet != null);
-
-            this.VariableSet = variableSet;
+            this.Variables = variables;
         }
 
         #endregion
