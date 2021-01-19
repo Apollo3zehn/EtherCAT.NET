@@ -1,9 +1,7 @@
 ﻿using System.Collections.Generic;
-using System.Runtime.Serialization;
 
 namespace EtherCAT.NET.Infrastructure
 {
-    [DataContract]
     public class SlavePdo
     {
         #region "Constructors"
@@ -25,10 +23,8 @@ namespace EtherCAT.NET.Infrastructure
 
         public SlaveInfo Parent { get; private set; }
 
-        [DataMember]
         public string Name { get; private set; }
 
-        [DataMember]
         public ushort Index { get; private set; }
 
         public ushort OsMax { get; private set; }
@@ -37,10 +33,8 @@ namespace EtherCAT.NET.Infrastructure
 
         public bool IsMandatory { get; private set; }
 
-        [DataMember]
         public int SyncManager { get; set; }
 
-        [DataMember]
         public IList<SlaveVariable> Variables { get; private set; }
 
         #endregion

@@ -234,9 +234,9 @@ namespace EtherCAT.NET
             return (device, group);
         }
 
-        public static List<DistributedClocksOpMode> GetOpModes(this SlaveInfo slaveInfo)
+        public static List<DistributedClocksOpMode> GetOpModes(this SlaveInfo slave)
         {
-            return slaveInfo.SlaveEsi.Dc.OpMode
+            return slave.Esi.Dc.OpMode
                 .Select(opMode => new DistributedClocksOpMode(opMode))
                 .ToList();
         }

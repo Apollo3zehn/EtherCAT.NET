@@ -35,16 +35,16 @@ The master can be operated without having a list of slaves. In that case, it sca
     ```
 2. Scan the list of connected slaves
     ```cs
-    var rootSlaveInfo = EcUtilities.ScanDevices(<network interface name>);
+    var rootSlave = EcUtilities.ScanDevices(<network interface name>);
     ```
 
-The returned ```rootSlaveInfo``` is the master itself, which holds child slaves in its ```SlaveInfos``` property)
+The returned ```rootSlave``` is the master itself, which holds child slaves in its `Children` / `Descendants` property)
 After that, the found slaves should be populated with ESI information:
 
 ```cs
-rootSlaveInfo.Descendants().ToList().ForEach(current =>
+rootSlave.Descendants().ToList().ForEach(slave =>
 {
-    ExtensibilityHelper.CreateDynamicData(settings.EsiDirectoryPath, extensionFactory, current);
+    ExtensibilityHelper.CreateDynamicData(settings.EsiDirectoryPath, slave);
 });
     
 ```
@@ -55,7 +55,7 @@ This master works differently to TwinCAT in that the slaves are identified using
 
 ```cs
 var message = new StringBuilder();
-var slaves = rootSlaveInfo.Descendants().ToList();
+var slaves = rootSlave.Descendants().ToList();
 
 message.AppendLine($"Found {slaves.Count()} slaves:");
 
@@ -70,7 +70,7 @@ logger.LogInformation(message.ToString().TrimEnd());
 Now, if the hardware slave order is changed, the individual slaves can be identified by:
 
 ```cs
-var slaves = rootSlaveInfo.Descendants().ToList();
+var slaves = rootSlave.Descendants().ToList();
 var EL1008 = slaves.FirstOrDefault(current => current.Csa == 3);
 ```
 
@@ -118,7 +118,7 @@ The first startup may take a while since an ESI cache is built to speed-up subse
 With the ```EcSettings``` object and a few more types (like ```ILogger```, see the sample), the master can be put in operation using:
 
 ```cs
-using (var master = new EcMaster(rootSlaveInfo, settings, extensionFactory, logger))
+using (var master = new EcMaster(rootSlave, settings, extensionFactory, logger))
 {
     master.Configure();
 
@@ -141,7 +141,7 @@ var timer = new RtTimer();
 
 using (var master = new EcMaster(settings, extensionFactory, logger))
 {
-    master.Configure(rootSlaveInfo);
+    master.Configure(rootSlave);
     timer.Start(interval, timeShift, UpdateIO);
 
     void UpdateIO()

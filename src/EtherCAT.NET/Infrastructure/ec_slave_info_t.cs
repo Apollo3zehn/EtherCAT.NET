@@ -13,13 +13,13 @@ namespace EtherCAT.NET.Infrastructure
         public UInt16 csa;
         public UInt16 parentIndex;
 
-        public ec_slave_info_t(SlaveInfo slaveInfo)
+        public ec_slave_info_t(SlaveInfo slave)
         {
-            this.manufacturer = slaveInfo.Manufacturer;
-            this.productCode = slaveInfo.ProductCode;
-            this.revision = slaveInfo.Revision;
-            this.oldCsa = slaveInfo.OldCsa;
-            this.csa = slaveInfo.Csa;
+            this.manufacturer = slave.Manufacturer;
+            this.productCode = slave.ProductCode;
+            this.revision = slave.Revision;
+            this.oldCsa = slave.OldCsa;
+            this.csa = slave.Csa;
             this.parentIndex = 0;
         }
     }

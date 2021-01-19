@@ -1,5 +1,5 @@
-﻿using EtherCAT.NET.Infrastructure;
-using OneDas.Infrastructure;
+﻿using EtherCAT.NET.Extension;
+using EtherCAT.NET.Infrastructure;
 using SOEM.PInvoke;
 using System;
 using System.Collections.Generic;
@@ -26,54 +26,55 @@ namespace EtherCAT.NET
 
         #region "Methods"
 
-        public static OneDasDataType GetOneDasDataTypeFromEthercatDataType(string value)
-        {
-            if (value == null)
-                return 0;
-            else
-                return EcUtilities.GetOneDasDataTypeFromEthercatDataType((EthercatDataType)Enum.Parse(typeof(EthercatDataType), value));
-        }
-
-        public static OneDasDataType GetOneDasDataTypeFromEthercatDataType(EthercatDataType ethercatDataType)
+        public static byte GetBitLength(EthercatDataType ethercatDataType)
         {
             switch (ethercatDataType)
             {
                 case EthercatDataType.Boolean:
-                    return OneDasDataType.BOOLEAN;
+                    return 1;
 
                 case EthercatDataType.Unsigned8:
-                    return OneDasDataType.UINT8;
+                    return 8;
 
                 case EthercatDataType.Integer8:
-                    return OneDasDataType.INT8;
+                    return 8;
 
                 case EthercatDataType.Unsigned16:
-                    return OneDasDataType.UINT16;
+                    return 16;
 
                 case EthercatDataType.Integer16:
-                    return OneDasDataType.INT16;
+                    return 16;
 
                 case EthercatDataType.Unsigned32:
-                    return OneDasDataType.UINT32;
+                    return 32;
 
                 case EthercatDataType.Integer32:
-                    return OneDasDataType.INT32;
+                    return 32;
 
                 case EthercatDataType.Unsigned64:
-                    return OneDasDataType.UINT64;
+                    return 64;
 
                 case EthercatDataType.Integer64:
-                    return OneDasDataType.INT64;
+                    return 64;
 
                 case EthercatDataType.Float32:
-                    return OneDasDataType.FLOAT32;
+                    return 32;
 
                 case EthercatDataType.Float64:
-                    return OneDasDataType.FLOAT64;
+                    return 64;
 
-                default:
+                default: // other data types are currently not supported - could return 0 cause IO map issues?
                     return 0;
             }
+        }
+
+
+        public static EthercatDataType ParseEtherCatDataType(string value)
+        {
+            if (value == null)
+                return 0;
+            else
+                return (EthercatDataType)Enum.Parse(typeof(EthercatDataType), value);
         }
 
         public static IEnumerable<T> TrueDistinct<T>(this IEnumerable<T> inputs)
@@ -143,13 +144,149 @@ namespace EtherCAT.NET
                 .ToString());
         }
 
-        public static SlaveInfo ScanDevices(string interfaceName, SlaveInfo referenceSlaveInfo = null)
+        public static void CreateDynamicData(string esiDirectoryPath, SlaveInfo slave)
         {
+            // find ESI
+            if (slave.Csa != 0)
+                (slave.Esi, slave.EsiGroup) = EsiUtilities.FindEsi(esiDirectoryPath, slave.Manufacturer, slave.ProductCode, slave.Revision);
+
+            //
+            var pdos = new List<SlavePdo>();
+            var base64ImageData = new byte[] { };
+
+            var name = slave.Esi.Type.Value;
+            var description = slave.Esi.Name.FirstOrDefault()?.Value;
+
+            if (description.StartsWith(name))
+                description = description.Substring(name.Length);
+
+            else if (string.IsNullOrWhiteSpace(description))
+                description = "no description available";
+
+            // PDOs
+            foreach (DataDirection dataDirection in Enum.GetValues(typeof(DataDirection)))
+            {
+                IEnumerable<PdoType> pdoTypes = null;
+
+                switch (dataDirection)
+                {
+                    case DataDirection.Output:
+                        pdoTypes = slave.Esi.RxPdo;
+                        break;
+                    case DataDirection.Input:
+                        pdoTypes = slave.Esi.TxPdo;
+                        break;
+                }
+
+                foreach (var pdoType in pdoTypes)
+                {
+                    var osMax = Convert.ToUInt16(pdoType.OSMax);
+
+                    if (osMax == 0)
+                    {
+                        var pdoName = pdoType.Name.First().Value;
+                        var pdoIndex = (ushort)EsiUtilities.ParseHexDecString(pdoType.Index.Value);
+                        var syncManager = pdoType.SmSpecified ? pdoType.Sm : -1;
+
+                        var slavePdo = new SlavePdo(slave, pdoName, pdoIndex, osMax, pdoType.Fixed, pdoType.Mandatory, syncManager);
+
+                        pdos.Add(slavePdo);
+
+                        var slaveVariables = pdoType.Entry.Select(x =>
+                        {
+                            var variableIndex = (ushort)EsiUtilities.ParseHexDecString(x.Index.Value);
+                            var subIndex = Convert.ToByte(x.SubIndex);
+                            //// Improve. What about -1 if SubIndex does not exist?
+                            return new SlaveVariable(slavePdo, x.Name?.FirstOrDefault()?.Value, variableIndex, subIndex, dataDirection, EcUtilities.ParseEtherCatDataType(x.DataType?.Value), (byte)x.BitLen);
+                        }).ToList();
+
+                        slavePdo.SetVariables(slaveVariables);
+                    }
+                    else
+                    {
+                        for (ushort indexOffset = 0; indexOffset <= osMax - 1; indexOffset++)
+                        {
+                            var pdoName = $"{pdoType.Name.First().Value} [{indexOffset}]";
+                            var pdoIndex = (ushort)((ushort)EsiUtilities.ParseHexDecString(pdoType.Index.Value) + indexOffset);
+                            var syncManager = pdoType.SmSpecified ? pdoType.Sm : -1;
+                            var indexOffset_Tmp = indexOffset;
+
+                            var slavePdo = new SlavePdo(slave, pdoName, pdoIndex, osMax, pdoType.Fixed, pdoType.Mandatory, syncManager);
+
+                            pdos.Add(slavePdo);
+
+                            var slaveVariables = pdoType.Entry.Select(x =>
+                            {
+                                var variableIndex = (ushort)EsiUtilities.ParseHexDecString(x.Index.Value);
+                                var subIndex = (byte)(byte.Parse(x.SubIndex) + indexOffset_Tmp);
+                                //// Improve. What about -1 if SubIndex does not exist?
+                                return new SlaveVariable(slavePdo, x.Name.FirstOrDefault()?.Value, variableIndex, subIndex, dataDirection, EcUtilities.ParseEtherCatDataType(x.DataType?.Value), (byte)x.BitLen);
+                            }).ToList();
+
+                            slavePdo.SetVariables(slaveVariables);
+                        }
+                    }
+                }
+            }
+
+            // image data
+            if (slave.EsiGroup.ItemElementName == ItemChoiceType1.ImageData16x14)
+                base64ImageData = (byte[])slave.EsiGroup.Item;
+
+            if (slave.Esi.ItemElementName.ToString() == nameof(ItemChoiceType1.ImageData16x14))
+                base64ImageData = (byte[])slave.Esi.Item;
+
+            // attach dynamic data
+            slave.DynamicData = new SlaveInfoDynamicData(name, description, pdos, base64ImageData);
+
+            // add DC extension to extensions
+            if (slave.Esi.Dc is not null
+            && !slave.Extensions.Any(extension => extension.GetType() == typeof(DistributedClocksExtension)))
+            {
+                slave.Extensions.Add(new DistributedClocksExtension(slave));
+            }
+
+            // execute extension logic
+            slave.Extensions.ToList().ForEach(extension =>
+            {
+                extension.EvaluateSettings();
+            });
+        }
+
+        public static SlaveInfo RescanDevices(EcSettings settings, SlaveInfo referenceRootSlave)
+        {
+            var referenceSlaves = default(IEnumerable<SlaveInfo>);
+
+            if (referenceRootSlave != null)
+                referenceSlaves = referenceRootSlave.Descendants().ToList();
+
+            var newRootSlave = EcUtilities.ScanDevices(settings.InterfaceName, referenceRootSlave);
+
+            newRootSlave.Descendants().ToList().ForEach(slave =>
+            {
+                var referenceSlave = slave.Csa == slave.OldCsa
+                    ? referenceSlaves?.FirstOrDefault(x => x.Csa == slave.Csa)
+                    : null;
+
+                if (referenceSlave != null)
+                    slave.Extensions = referenceSlave.Extensions;
+
+                EcUtilities.CreateDynamicData(settings.EsiDirectoryPath, slave);
+            });
+
+            return newRootSlave;
+        }
+
+        public static SlaveInfo ScanDevices(string interfaceName, SlaveInfo referenceRootSlave = null)
+        {
+            if (NetworkInterface.GetAllNetworkInterfaces().Where(x => x.Name == interfaceName).FirstOrDefault()?.OperationalStatus != OperationalStatus.Up)
+                throw new Exception($"The network interface '{interfaceName}' is not linked. Aborting action.");
+
             var context = EcHL.CreateContext();
-            var slaveInfo = EcUtilities.ScanDevices(context, interfaceName, referenceSlaveInfo);
+            var rootSlave = EcUtilities.ScanDevices(context, interfaceName, referenceRootSlave);
             EcHL.FreeContext(context);
 
-            return slaveInfo;
+            return rootSlave;
         }
 
         /// <summary>
@@ -157,22 +294,21 @@ namespace EtherCAT.NET
         /// </summary>
         /// <param name="interfaceName">The name of the network adapter.</param>
         /// <returns>Returns found slave.</returns>
-        public static SlaveInfo ScanDevices(IntPtr context, string interfaceName, SlaveInfo referenceSlaveInfo = null)
+        public static SlaveInfo ScanDevices(IntPtr context, string interfaceName, SlaveInfo referenceSlave = null)
         {
+            ec_slave_info_t[] refSlaveIdentifications = null;
 
+            if (referenceSlave != null)
+                refSlaveIdentifications = EcUtilities.ToSlaveIdentifications(referenceSlave);
+            else
+                refSlaveIdentifications = new ec_slave_info_t[] { };
+
+            // scan devices
             var networkInterface = NetworkInterface
                 .GetAllNetworkInterfaces()
                 .Where(nic => nic.Name == interfaceName)
                 .FirstOrDefault();
 
-            ec_slave_info_t[] refSlaveIdentifications = null;
-
-            if (referenceSlaveInfo != null)
-                refSlaveIdentifications = EcUtilities.ToSlaveIdentifications(referenceSlaveInfo);
-            else
-                refSlaveIdentifications = new ec_slave_info_t[] { };
-
-            // scan devices
             if (networkInterface == null)
                 throw new Exception($"{ ErrorMessage.SoemWrapper_NetworkInterfaceNotFound } Interface name: '{ interfaceName }'.");
 
@@ -238,7 +374,7 @@ namespace EtherCAT.NET
                 {
                     var ecVariableInfoPtr = IntPtr.Add(ecPdoInfo.variableInfos, index2 * Marshal.SizeOf(typeof(ec_variable_info_t)));
                     var ecVariableInfo = Marshal.PtrToStructure<ec_variable_info_t>(ecVariableInfoPtr);
-                    var slaveVariable = new SlaveVariable(slavePdo, ecVariableInfo.name, ecVariableInfo.index, ecVariableInfo.subIndex, dataDirection, EcUtilities.GetOneDasDataTypeFromEthercatDataType(ecVariableInfo.dataType));
+                    var slaveVariable = new SlaveVariable(slavePdo, ecVariableInfo.name, ecVariableInfo.index, ecVariableInfo.subIndex, dataDirection, ecVariableInfo.dataType);
 
                     return slaveVariable;
                 }).ToList());
@@ -369,45 +505,38 @@ namespace EtherCAT.NET
 
         private static SlaveInfo ToSlaveInfo(IList<ec_slave_info_t> slaveIdentifications)
         {
-            var slaveInfos = new List<SlaveInfo>();
+            var slaves = new List<SlaveInfo>();
 
             for (int i = 0; i < slaveIdentifications.Count(); i++)
             {
-                SlaveInfo currentSlaveInfo;
+                SlaveInfo currentSlave;
 
-                currentSlaveInfo = new SlaveInfo(slaveIdentifications[i]);
+                currentSlave = new SlaveInfo(slaveIdentifications[i]);
 
                 if (i > 0)
-                    slaveInfos[slaveIdentifications[i].parentIndex].Children.Add(currentSlaveInfo);
+                    slaves[slaveIdentifications[i].parentIndex].Children.Add(currentSlave);
 
-                slaveInfos.Add(currentSlaveInfo);
+                slaves.Add(currentSlave);
             }
 
-            return slaveInfos.First();
+            return slaves.First();
         }
 
-        private static ec_slave_info_t[] ToSlaveIdentifications(SlaveInfo slaveInfo)
+        private static ec_slave_info_t[] ToSlaveIdentifications(SlaveInfo slave)
         {
-            List<ec_slave_info_t> slaveIdentifications;
-
-            slaveIdentifications = slaveInfo.Descendants().ToList().Select(x => new ec_slave_info_t(x)).ToList();
-            slaveIdentifications.Insert(0, new ec_slave_info_t(slaveInfo));
+            var slaveIdentifications = slave.Descendants().ToList().Select(x => new ec_slave_info_t(x)).ToList();
+            slaveIdentifications.Insert(0, new ec_slave_info_t(slave));
 
             return slaveIdentifications.ToArray();
         }
 
-        /// <summary>
-        /// Gathers information about the current status of the requested list of <see cref="SlaveInfo"/>.
-        /// </summary>
-        /// <param name="SlaveInfos">The list of <see cref="SlaveInfo"/>.</param>
-        /// <returns>Returns information about the current status of the requested list of <see cref="SlaveInfo"/>.</returns>
-        public static string GetSlaveStateDescription(IntPtr context, IEnumerable<SlaveInfo> slaveInfos)
+        public static string GetSlaveStateDescription(IntPtr context, IEnumerable<SlaveInfo> slaves)
         {
-            StringBuilder slaveStateDescription = new StringBuilder();
+            var slaveStateDescription = new StringBuilder();
 
-            foreach (SlaveInfo slaveInfo in slaveInfos)
+            foreach (var slave in slaves)
             {
-                var slaveIndex = Convert.ToUInt16(slaveInfos.ToList().IndexOf(slaveInfo) + 1);
+                var slaveIndex = Convert.ToUInt16(slaves.ToList().IndexOf(slave) + 1);
 
                 // Since the registers 0x092c and 0x0932 cannot be read always, the value will be reset before
                 var systemTimeDifference = int.MaxValue;
@@ -426,15 +555,15 @@ namespace EtherCAT.NET
                 {
                     if (returnValue < 0)
                     {
-                        slaveStateDescription.AppendLine($"-- Error reading data ({slaveInfo.DynamicData.Name}) --");
+                        slaveStateDescription.AppendLine($"-- Error reading data ({slave.DynamicData.Name}) --");
                     }
                     else
                     {
-                        string hasCompleteAccess = slaveInfo.SlaveEsi.Mailbox?.CoE?.CompleteAccess == true 
+                        string hasCompleteAccess = slave.Esi.Mailbox?.CoE?.CompleteAccess == true 
                             ? " True" 
                             : "False";
 
-                        slaveStateDescription.AppendLine($"Slave {slaveIndex,3} | CA: {hasCompleteAccess} | Req-State: 0x{requestedState:X4} | Act-State: 0x{actualState:X4} | AL-Status: 0x{alStatusCode:X4} | Sys-Time Diff: 0x{systemTimeDifference:X8} | Speed Counter Diff: 0x{speedCounterDifference:X4} | #Pdo out: {outputPdoCount} | #Pdo in: {inputPdoCount} | ({slaveInfo.DynamicData.Name})");
+                        slaveStateDescription.AppendLine($"Slave {slaveIndex,3} | CA: {hasCompleteAccess} | Req-State: 0x{requestedState:X4} | Act-State: 0x{actualState:X4} | AL-Status: 0x{alStatusCode:X4} | Sys-Time Diff: 0x{systemTimeDifference:X8} | Speed Counter Diff: 0x{speedCounterDifference:X4} | #Pdo out: {outputPdoCount} | #Pdo in: {inputPdoCount} | ({slave.DynamicData.Name})");
                     }
                 }
             }

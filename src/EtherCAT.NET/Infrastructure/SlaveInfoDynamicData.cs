@@ -1,9 +1,7 @@
 ﻿using System.Collections.Generic;
-using System.Runtime.Serialization;
 
 namespace EtherCAT.NET.Infrastructure
 {
-    [DataContract]
     public class SlaveInfoDynamicData
     {
         #region "Constructors"
@@ -20,16 +18,12 @@ namespace EtherCAT.NET.Infrastructure
 
         #region "Properties"
 
-        [DataMember]
         public string Name { get; set; }
 
-        [DataMember]
         public string Description { get; set; }
 
-        [DataMember]
         public IList<SlavePdo> Pdos { get; private set; }
 
-        [DataMember]
         public byte[] Base64ImageData { get; private set; }
 
         #endregion

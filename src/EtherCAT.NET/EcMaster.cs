@@ -1,4 +1,9 @@
-﻿using System;
+﻿using EtherCAT.NET.Extension;
+using EtherCAT.NET.Infrastructure;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using SOEM.PInvoke;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -6,14 +11,6 @@ using System.Net.NetworkInformation;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
-using EtherCAT.NET.Extensibility;
-using EtherCAT.NET.Extension;
-using EtherCAT.NET.Infrastructure;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
-using OneDas.Extensibility;
-using OneDas.Infrastructure;
-using SOEM.PInvoke;
 
 namespace EtherCAT.NET
 {
@@ -22,7 +19,6 @@ namespace EtherCAT.NET
         #region Fields
 
         // general
-        IExtensionFactory _extensionFactory;
         private ILogger _logger;
         private EcSettings _settings;
 
@@ -61,17 +57,16 @@ namespace EtherCAT.NET
 
         #region Constructors
 
-        public EcMaster(EcSettings settings, IExtensionFactory extensionFactory) 
-            : this(settings, extensionFactory, NullLogger.Instance)
+        public EcMaster(EcSettings settings) 
+            : this(settings, NullLogger.Instance)
         {
             //
         }
 
-        public EcMaster(EcSettings settings, IExtensionFactory extensionFactory, ILogger logger)
+        public EcMaster(EcSettings settings, ILogger logger)
         {
             _settings = settings.ShallowCopy();
             _logger = logger;
-            _extensionFactory = extensionFactory;
 
             this.Context = EcHL.CreateContext();
 
@@ -106,30 +101,30 @@ namespace EtherCAT.NET
 
         #region Methods
 
-        private void ValidateSlaves(IList<SlaveInfo> slaveInfos, IList<SlaveInfo> actualSlaveInfos)
+        private void ValidateSlaves(IList<SlaveInfo> slaves, IList<SlaveInfo> actualSlaves)
         {
-            if (slaveInfos.Count() != actualSlaveInfos.Count())
+            if (slaves.Count() != actualSlaves.Count())
                 throw new Exception(ErrorMessage.EthercatGateway_EtherCATConfigurationMismatch);
 
-            for (int i = 0; i <= actualSlaveInfos.Count() - 1; i++)
+            for (int i = 0; i <= actualSlaves.Count() - 1; i++)
             {
-                if (!(actualSlaveInfos[i].ProductCode == slaveInfos[i].ProductCode 
-                   && actualSlaveInfos[i].Revision == slaveInfos[i].Revision))
+                if (!(actualSlaves[i].ProductCode == slaves[i].ProductCode 
+                   && actualSlaves[i].Revision == slaves[i].Revision))
                     throw new Exception(ErrorMessage.EthercatGateway_EtherCATConfigurationMismatch);
             }
         }
 
-        private void ConfigureSlaves(IList<SlaveInfo> slaveInfos)
+        private void ConfigureSlaves(IList<SlaveInfo> slaves)
         {
             var callbacks = new List<EcHL.PO2SOCallback>();
 
-            foreach (SlaveInfo slaveInfo in slaveInfos)
+            foreach (var slave in slaves)
             {
                 // SDO / PDO config / PDO assign
-                var currentSlaveIndex = (ushort)(Convert.ToUInt16(slaveInfos.ToList().IndexOf(slaveInfo)) + 1);
-                var extensions = slaveInfo.SlaveExtensions.Select(slaveExtension => _extensionFactory.BuildLogic<SlaveExtensionLogic>(slaveExtension)).ToList();
+                var currentSlaveIndex = (ushort)(Convert.ToUInt16(slaves.ToList().IndexOf(slave)) + 1);
+                var extensions = slave.Extensions;
 
-                var sdoWriteRequests = slaveInfo.GetConfiguration(extensions).ToList();
+                var sdoWriteRequests = slave.GetConfiguration(extensions).ToList();
 
                 EcHL.PO2SOCallback callback = slaveIndex =>
                 {
@@ -151,13 +146,13 @@ namespace EtherCAT.NET
             });
         }
 
-        private void ConfigureIoMap(IList<SlaveInfo> slaveInfos)
+        private void ConfigureIoMap(IList<SlaveInfo> slaves)
         {
             var ioMapByteOffset = 0;
             var ioMapBitOffset = 0;
             var slavePdoOffsets = default(int[]);
-            var slaveRxPdoOffsets = new int[slaveInfos.Count() + 1];
-            var slaveTxPdoOffsets = new int[slaveInfos.Count() + 1];
+            var slaveRxPdoOffsets = new int[slaves.Count() + 1];
+            var slaveTxPdoOffsets = new int[slaves.Count() + 1];
 
             _actualIoMapSize = EcHL.ConfigureIoMap(this.Context, _ioMapPtr, slaveRxPdoOffsets, slaveTxPdoOffsets, out _expectedWorkingCounter);
 
@@ -175,16 +170,16 @@ namespace EtherCAT.NET
                         throw new NotImplementedException();
                 }
 
-                foreach (SlaveInfo SlaveInfo in slaveInfos)
+                foreach (var slave in slaves)
                 {
-                    ioMapByteOffset = slavePdoOffsets[slaveInfos.ToList().IndexOf(SlaveInfo) + 1];
+                    ioMapByteOffset = slavePdoOffsets[slaves.ToList().IndexOf(slave) + 1];
 
-                    foreach (SlaveVariable variable in SlaveInfo.DynamicData.Pdos.Where(x => x.SyncManager >= 0).ToList().SelectMany(x => x.Variables).ToList().Where(x => x.DataDirection == dataDirection))
+                    foreach (var variable in slave.DynamicData.Pdos.Where(x => x.SyncManager >= 0).ToList().SelectMany(x => x.Variables).ToList().Where(x => x.DataDirection == dataDirection))
                     {
                         variable.DataPtr = IntPtr.Add(_ioMapPtr, ioMapByteOffset);
                         variable.BitOffset = ioMapBitOffset;
 
-                        if (variable.DataType == OneDasDataType.BOOLEAN)
+                        if (variable.DataType == EthercatDataType.Boolean)
                             variable.BitOffset = ioMapBitOffset; // bool is treated as bit-oriented
 
                         Debug.WriteLine($"{variable.Name} {variable.DataPtr.ToInt64() - _ioMapPtr.ToInt64()}/{variable.BitOffset}");
@@ -200,7 +195,7 @@ namespace EtherCAT.NET
                 }
             }
 
-            _logger.LogInformation($"IO map configured ({slaveInfos.Count()} {(slaveInfos.Count() > 1 ? "slaves" : "slave")}, {_actualIoMapSize} bytes)");
+            _logger.LogInformation($"IO map configured ({slaves.Count()} {(slaves.Count() > 1 ? "slaves" : "slave")}, {_actualIoMapSize} bytes)");
         }
 
         private void ConfigureDc()
@@ -210,21 +205,21 @@ namespace EtherCAT.NET
             _logger.LogInformation($"DC system time diff. is <= {systemTimeDifference & 0x7FFF} ns");
         }
 
-        private void ConfigureSync01(IList<SlaveInfo> slaveInfos)
+        private void ConfigureSync01(IList<SlaveInfo> slaves)
         {
             // SYNC0 / SYNC1
-            foreach (var slaveInfo in slaveInfos)
+            foreach (var slave in slaves)
             {
-                var slaveIndex = (ushort)(Convert.ToUInt16(slaveInfos.ToList().IndexOf(slaveInfo)) + 1);
-                var distributedClocksSettings = slaveInfo
-                    .SlaveExtensions
-                    .OfType<DistributedClocksSettings>()
+                var slaveIndex = (ushort)(Convert.ToUInt16(slaves.ToList().IndexOf(slave)) + 1);
+                var distributedClocksSettings = slave
+                    .Extensions
+                    .OfType<DistributedClocksExtension>()
                     .ToList()
                     .FirstOrDefault();
 
                 if (distributedClocksSettings != null)
                 {
-                    if (!slaveInfo.SlaveEsi.Dc.TimeLoopControlOnly)
+                    if (!slave.Esi.Dc.TimeLoopControlOnly)
                     {
                         byte[] assignActivate = null;
                         var parameters = distributedClocksSettings.CalculateDcParameters(ref assignActivate, _settings.CycleFrequency);
@@ -234,7 +229,7 @@ namespace EtherCAT.NET
             }
         }
 
-        public void Configure(SlaveInfo rootSlaveInfo = null)
+        public void Configure(SlaveInfo rootSlave = null)
         {
             var networkInterface = NetworkInterface
                 .GetAllNetworkInterfaces()
@@ -246,26 +241,26 @@ namespace EtherCAT.NET
 
             #region "PreOp"
 
-            var actualSlaveInfo = EcUtilities.ScanDevices(this.Context, _settings.InterfaceName, null);
+            var actualSlave = EcUtilities.ScanDevices(this.Context, _settings.InterfaceName, null);
 
-            if (rootSlaveInfo == null)
+            if (rootSlave == null)
             {
-                rootSlaveInfo = actualSlaveInfo;
+                rootSlave = actualSlave;
 
-                rootSlaveInfo.Descendants().ToList().ForEach(current =>
+                rootSlave.Descendants().ToList().ForEach(current =>
                 {
-                    ExtensibilityHelper.CreateDynamicData(_settings.EsiDirectoryPath, _extensionFactory, current);
+                    EcUtilities.CreateDynamicData(_settings.EsiDirectoryPath, current);
                 });
             }
 
-            var slaveInfos = rootSlaveInfo.Descendants().ToList();
-            var actualSlaveInfos = actualSlaveInfo.Descendants().ToList();
+            var slaves = rootSlave.Descendants().ToList();
+            var actualSlaves = actualSlave.Descendants().ToList();
 
-            this.ValidateSlaves(slaveInfos, actualSlaveInfos);
-            this.ConfigureSlaves(slaveInfos);
-            this.ConfigureIoMap(slaveInfos);
+            this.ValidateSlaves(slaves, actualSlaves);
+            this.ConfigureSlaves(slaves);
+            this.ConfigureIoMap(slaves);
             this.ConfigureDc();
-            this.ConfigureSync01(slaveInfos);
+            this.ConfigureSync01(slaves);
 
             #endregion
 
@@ -313,7 +308,7 @@ namespace EtherCAT.NET
                     if (_wkcMismatchCounter == _settings.CycleFrequency)
                     {
                         _logger.LogWarning($"working counter mismatch { _actualWorkingCounter }/{ _expectedWorkingCounter }");
-                        //Trace.WriteLine(EcUtilities.GetSlaveStateDescription(_ecSettings.RootSlaveInfos.SelectMany(x => x.Descendants()).ToList()));
+                        //Trace.WriteLine(EcUtilities.GetSlaveStateDescription(_ecSettings.RootSlaves.SelectMany(x => x.Descendants()).ToList()));
                         _wkcMismatchCounter = 0;
                     }
 

@@ -7,12 +7,10 @@
     <TargetFramework>netstandard2.0</TargetFramework>
   </PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="OneDas.Types" Version="1.0.0-alpha.2.171" />
-    
-    <!-- required until OneDas.Types dependency is up to date -->
+  <ItemGroup>  
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="5.0.0" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="5.0.0" />
+    <PackageReference Include="System.Memory" Version="4.5.4" />
   </ItemGroup>
 
   <ItemGroup>
