@@ -1,6 +1,5 @@
 ﻿using EtherCAT.NET.Infrastructure;
 using OneDas.Extensibility;
-using System.Diagnostics.Contracts;
 using System.Runtime.Serialization;
 
 namespace EtherCAT.NET.Extensibility
@@ -18,8 +17,6 @@ namespace EtherCAT.NET.Extensibility
 
         public SlaveExtensionSettingsBase(SlaveInfo slaveInfo)
         {
-            Contract.Requires(slaveInfo != null);
-
             this.SlaveInfo = slaveInfo;
         }
 

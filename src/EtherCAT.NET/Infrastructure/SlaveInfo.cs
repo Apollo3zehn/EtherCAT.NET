@@ -1,7 +1,6 @@
 ﻿using EtherCAT.NET.Extensibility;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.Contracts;
 using System.Linq;
 using System.Runtime.Serialization;
 
@@ -34,8 +33,6 @@ namespace EtherCAT.NET.Infrastructure
 
         public SlaveInfo(ec_slave_info_t slaveIdentification, List<SlaveInfo> children)
         {
-            Contract.Requires(children != null, nameof(children));
-
             this.Manufacturer = slaveIdentification.manufacturer;
             this.ProductCode = slaveIdentification.productCode;
             this.Revision = slaveIdentification.revision;

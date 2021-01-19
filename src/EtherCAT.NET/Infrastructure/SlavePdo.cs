@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using System.Diagnostics.Contracts;
 using System.Runtime.Serialization;
 
 namespace EtherCAT.NET.Infrastructure
@@ -11,9 +10,6 @@ namespace EtherCAT.NET.Infrastructure
 
         public SlavePdo(SlaveInfo parent, string name, ushort index, ushort osMax, bool isFixed, bool isMandatory, int syncManager)
         {
-            Contract.Requires(parent != null);
-            Contract.Requires(syncManager >= 0);
-
             this.Parent = parent;
             this.Name = name;
             this.Index = index;
@@ -53,8 +49,6 @@ namespace EtherCAT.NET.Infrastructure
 
         public void SetVariables(IList<SlaveVariable> variables)
         {
-            Contract.Requires(variables != null);
-
             this.Variables = variables;
         }
 

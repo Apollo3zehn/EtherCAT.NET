@@ -1,7 +1,6 @@
 ﻿using OneDas;
 using OneDas.Extensibility;
 using OneDas.Infrastructure;
-using System.Diagnostics.Contracts;
 using System.Runtime.Serialization;
 
 namespace EtherCAT.NET.Infrastructure
@@ -13,8 +12,6 @@ namespace EtherCAT.NET.Infrastructure
 
         public SlaveVariable(SlavePdo parent, string name, ushort index, byte subIndex, DataDirection dataDirection, OneDasDataType dataType, byte bitLength = 0) : base(name, dataType, dataDirection, Endianness.LittleEndian)
         {
-            Contract.Requires(parent != null);
-
             this.Parent = parent;
             this.Index = index;
             this.SubIndex = subIndex;

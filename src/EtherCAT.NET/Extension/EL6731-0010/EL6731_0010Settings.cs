@@ -4,7 +4,6 @@ using OneDas.Extensibility;
 using OneDas.Infrastructure;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.Contracts;
 using System.Linq;
 using System.Runtime.Serialization;
 
@@ -40,8 +39,6 @@ namespace EtherCAT.NET.Extension
 
         public override void EvaluateSettings()
         {
-            Contract.Requires(SelectedModules != null);
-
             if (!(0 < this.StationNumber && this.StationNumber < 127))
                 throw new Exception(ExtensionErrorMessage.EL6731_0010Settings_StationNumberInvalid);
 
