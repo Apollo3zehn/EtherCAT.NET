@@ -11,7 +11,7 @@ namespace EtherCAT.NET.Extension
 {
     [DataContract]
     [ExtensionContext(typeof(EL6731_0010Extension))]
-    [ExtensionIdentification("EL6731_0010", "EL6731-0010", "PROFIBUS slave terminal", @"WebClient.EL6731_0010View.html", @"WebClient.EL6731_0010.js")]
+    [ExtensionIdentification("EL6731_0010", "EL6731-0010", "PROFIBUS slave terminal", "", "")]
     [TargetSlave(0x00000002, 0x1a4b3052)]
     public class EL6731_0010Settings : SlaveExtensionSettingsBase
     {

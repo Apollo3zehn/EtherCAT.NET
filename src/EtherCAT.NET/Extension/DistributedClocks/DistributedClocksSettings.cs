@@ -10,7 +10,7 @@ namespace EtherCAT.NET.Extension
     [DataContract]
     [ExtensionContext(typeof(DistributedClocksExtension))]
     //[ExtensionSupporter(typeof(DistributedClocksSupporter))]
-    [ExtensionIdentification("Ethercat_DC", "Distributed Clocks", "Enable usage of distributed clocks.", @"EthercatSlaveExtension.DistributedClocks.WebClient.DistributedClocksView.html", @"EthercatSlaveExtension.DistributedClocks.WebClient.DistributedClocks.js")]
+    [ExtensionIdentification("Ethercat_DC", "Distributed Clocks", "Enable usage of distributed clocks.", "", "")]
     public class DistributedClocksSettings : SlaveExtensionSettingsBase
     {
         #region "Constructors"

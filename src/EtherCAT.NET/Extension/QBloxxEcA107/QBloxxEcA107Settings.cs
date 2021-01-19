@@ -11,7 +11,7 @@ namespace EtherCAT.NET.Extension
 {
     [DataContract]
     [ExtensionContext(typeof(QBloxxEcA107Extension))]
-    [ExtensionIdentification("QBloxxEcA107", "Q.Bloxx EC A107", "Q.bloxx-EC A107", @"WebClient.QBloxxEcA107View.html", @"WebClient.QBloxxEcA107.js")]
+    [ExtensionIdentification("QBloxxEcA107", "Q.Bloxx EC A107", "Q.bloxx-EC A107", "", "")]
     [TargetSlave(0x0000050A, 0x0000BB81)]
     public class QBloxxEcA107Settings : SlaveExtensionSettingsBase
     {

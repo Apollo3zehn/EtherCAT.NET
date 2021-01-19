@@ -11,7 +11,7 @@ namespace EtherCAT.NET.Extension
 {
     [DataContract]
     [ExtensionContext(typeof(AnybusXGatewayExtension))]
-    [ExtensionIdentification("AnybusXGateway", "Anybus X-Gateway", "Modbus RTU - EtherCAT Slave Gateway", @"WebClient.AnybusXGatewayView.html", @"WebClient.AnybusXGateway.js")]
+    [ExtensionIdentification("AnybusXGateway", "Anybus X-Gateway", "Modbus RTU - EtherCAT Slave Gateway", "", "")]
     [TargetSlave(0x0000001B, 0x0000003D)]
     public class AnybusXGatewaySettings : SlaveExtensionSettingsBase
     {

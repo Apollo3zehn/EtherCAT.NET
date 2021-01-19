@@ -1,9 +1,0 @@
-{
-  "extends": "./../../../../../tsconfig.slaveextension.json",
-  "compilerOptions": {
-    "outFile": "./../../WebClient/AnybusXGateway.js"
-  },
-  "include": [
-    "./*.ts"
-  ]
-}

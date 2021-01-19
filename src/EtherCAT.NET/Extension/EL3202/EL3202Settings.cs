@@ -8,7 +8,7 @@ namespace EtherCAT.NET.Extension
 {
     [DataContract]
     [ExtensionContext(typeof(EL3202Extension))]
-    [ExtensionIdentification("EL3202", "EL3202", "2-channel input terminal PT100 (RTD) for 2- or 3-wire connection", @"WebClient.EL3202View.html", @"WebClient.EL3202.js")]
+    [ExtensionIdentification("EL3202", "EL3202", "2-channel input terminal PT100 (RTD) for 2- or 3-wire connection", "", "")]
     [TargetSlave(0x00000002, 0x0c823052)]
     public class EL3202Settings : SlaveExtensionSettingsBase
     {

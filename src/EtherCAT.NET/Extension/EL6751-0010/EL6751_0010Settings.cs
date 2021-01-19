@@ -9,7 +9,7 @@ namespace EtherCAT.NET.Extension
 {
     [DataContract]
     [ExtensionContext(typeof(EL6751_0010Extension))]
-    [ExtensionIdentification("EL6751_0010", "EL6751-0010", "CANopen slave terminal", @"WebClient.EL6751_0010View.html", @"WebClient.EL6751_0010.js")]
+    [ExtensionIdentification("EL6751_0010", "EL6751-0010", "CANopen slave terminal", "", "")]
     [TargetSlave(0x00000002, 0x1a5f3052)]
     public class EL6751_0010Settings : SlaveExtensionSettingsBase
     {

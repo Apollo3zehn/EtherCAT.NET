@@ -15,8 +15,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		init_solution.ps1 = init_solution.ps1
 		LICENSE.md = LICENSE.md
 		README.md = README.md
-		tsconfig.base.json = tsconfig.base.json
-		tsconfig.slaveextension.json = tsconfig.slaveextension.json
 	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EtherCAT.NET", "src\EtherCAT.NET\EtherCAT.NET.csproj", "{6C7BBE1A-38AA-41E2-A88B-A6BF3282DC26}"

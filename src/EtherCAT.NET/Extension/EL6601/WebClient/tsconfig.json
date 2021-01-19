@@ -1,9 +1,0 @@
-{
-  "extends": "./../../../../../tsconfig.slaveextension.json",
-  "compilerOptions": {
-    "outFile": "./../../WebClient/EL6601.js"
-  },
-  "include": [
-    "./*.ts"
-  ]
-}
