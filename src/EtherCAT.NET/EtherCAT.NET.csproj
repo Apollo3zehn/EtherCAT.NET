@@ -43,4 +43,7 @@
     </EmbeddedResource>
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Extension\InitialSettings\" />
+  </ItemGroup>
 </Project>
