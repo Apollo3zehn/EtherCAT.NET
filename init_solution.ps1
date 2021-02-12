@@ -18,6 +18,7 @@ elseif ($IsLinux)
 elseif ($IsMacOS)
 {
     # The i386 architecture is deprecated for macOS
+    throw [System.PlatformNotSupportedException]
 }
 else 
 {
