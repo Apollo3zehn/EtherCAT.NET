@@ -7,10 +7,17 @@ namespace EtherCAT.NET.Extension
 {
     public class DistributedClocksExtension : SlaveExtension
     {
+        #region Fields
+
+        SlaveInfo _slaveInfo;
+
+        #endregion
+
         #region "Constructors"
 
-        public DistributedClocksExtension(SlaveInfo slaveInfo) : base(slaveInfo)
+        public DistributedClocksExtension(SlaveInfo slaveInfo)
         {
+            _slaveInfo = slaveInfo;
             this.SelectedOpModeId = slaveInfo.Esi.Dc.OpMode.First().Name;
         }
 
@@ -26,12 +33,12 @@ namespace EtherCAT.NET.Extension
 
         public override void EvaluateSettings()
         {
-            var dcOpMode = this.Slave.Esi.Dc.OpMode.Where(x => x.Name == SelectedOpModeId).First();
+            var dcOpMode = _slaveInfo.Esi.Dc.OpMode.Where(x => x.Name == SelectedOpModeId).First();
             var syncManagerPdosSet = dcOpMode.Sm ?? new DeviceTypeDCOpModeSM[] { };
 
             if (syncManagerPdosSet.Count() > 0)
             {
-                this.Slave.DynamicData.Pdos.ToList().ForEach(x => x.SyncManager = -1);
+                _slaveInfo.DynamicData.Pdos.ToList().ForEach(x => x.SyncManager = -1);
 
                 foreach (var syncManagerPdos in syncManagerPdosSet)
                 {
@@ -45,7 +52,7 @@ namespace EtherCAT.NET.Extension
                         for (ushort osFactorIndex = 1; osFactorIndex <= currentOsFactor; osFactorIndex++)
                         {
                             var indexOffset = (ushort)(osFactorIndex - 1);
-                            this.Slave.DynamicData.Pdos.Where(x => x.Index == index + indexOffset).First().SyncManager = syncManager;
+                            _slaveInfo.DynamicData.Pdos.Where(x => x.Index == index + indexOffset).First().SyncManager = syncManager;
                         }
                     }
                 }
@@ -62,7 +69,7 @@ namespace EtherCAT.NET.Extension
             var cycleTime0 = 0U;
             var cycleTime1 = 0U;
             var shiftTime0 = 0;
-            var dcOpMode = this.Slave.Esi.Dc.OpMode.Where(x => x.Name == SelectedOpModeId).First();
+            var dcOpMode = _slaveInfo.Esi.Dc.OpMode.Where(x => x.Name == SelectedOpModeId).First();
 
             assignActivate = null;
 

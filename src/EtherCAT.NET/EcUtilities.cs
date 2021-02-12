@@ -316,7 +316,7 @@ namespace EtherCAT.NET
                 interfaceName = $@"rpcap://\Device\NPF_{networkInterface.Id}";
 
             else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux) ||
-                RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+                     RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
                 interfaceName = $"{interfaceName}";
 
             else
@@ -594,9 +594,7 @@ namespace EtherCAT.NET
                 sdoSubIndex,
                 dataset
             );
-        }
-
-        
+        }       
 
         #endregion
     }

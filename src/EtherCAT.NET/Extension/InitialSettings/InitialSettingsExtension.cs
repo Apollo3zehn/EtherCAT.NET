@@ -9,7 +9,7 @@ namespace EtherCAT.NET.Extension
     /// </summary>
     public class InitialSettingsExtension : SlaveExtension
     {
-        public InitialSettingsExtension(IEnumerable<SdoWriteRequest> requests) : base(null)
+        public InitialSettingsExtension(IEnumerable<SdoWriteRequest> requests)
         {
             _sdoRequests = requests;
         }

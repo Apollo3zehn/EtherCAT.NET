@@ -19,8 +19,8 @@ namespace EtherCAT.NET.Infrastructure
             _slavePdos = slave.DynamicData.Pdos;
             _nofSlavePdos = _slavePdos.Count;
 
-            if( _nofSlavePdos == 0)
-                throw new Exception($"No slave Pdos present.");
+            if (_nofSlavePdos == 0)
+                throw new Exception($"No slave PDOs present.");
 
             var channel1Pdo = _slavePdos[0];
             var variableCh1 = channel1Pdo.Variables.First();
