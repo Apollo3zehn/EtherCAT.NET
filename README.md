@@ -102,7 +102,7 @@ A variable holds a reference to a certain address in RAM. This address is found 
 unsafe
 {
     var myVariableSpan = new Span<int>(variable0.DataPtr.ToPointer(), 1);
-    myVariableSpan[0] ^= 1UL << variable0.DataPtr.BitOffset;
+    myVariableSpan[0] ^= 1UL << variable0.BitOffset;
 }
 ```
 
