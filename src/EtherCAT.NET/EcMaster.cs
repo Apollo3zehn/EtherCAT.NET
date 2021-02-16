@@ -172,8 +172,14 @@ namespace EtherCAT.NET
 
                 foreach (var slave in slaves)
                 {
-                    ioMapByteOffset = slavePdoOffsets[slaves.ToList().IndexOf(slave) + 1];
+                    var slaveByteOffset = slavePdoOffsets[slaves.ToList().IndexOf(slave) + 1];
 
+                    // reset bit offset if byte offset changes
+                    if( slaveByteOffset != ioMapByteOffset )
+                        ioMapBitOffset = 0;
+
+                    ioMapByteOffset = slaveByteOffset;
+                    
                     foreach (var variable in slave.DynamicData.Pdos.Where(x => x.SyncManager >= 0).ToList().SelectMany(x => x.Variables).ToList().Where(x => x.DataDirection == dataDirection))
                     {
                         variable.DataPtr = IntPtr.Add(_ioMapPtr, ioMapByteOffset);

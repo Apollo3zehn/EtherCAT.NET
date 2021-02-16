@@ -75,6 +75,20 @@ namespace SOEM.PInvoke
         public static extern int SdoWrite(IntPtr context, UInt16 slaveIndex, UInt16 sdoIndex, byte sdoSubIndex, byte[] dataset, UInt32 datasetCount, Int32[] byteCounts);
 
         /// <summary>
+        /// Reads service data object data from the mailbox of the corresponding slave.
+        /// NoCa means the CA parameter of the native SOEM ecx_SDOread is set to false.
+        /// CA = false: single subindex read. CA = true: Complete Access, all subindexes read.
+        /// </summary>
+        /// <param name="slaveIndex">The index of the corresponding slave.</param>
+        /// <param name="sdoIndex">The index of the service data object.</param>
+        /// <param name="sdoSubIndex">The sub index of the service data object.</param>
+        /// <param name="dataset">The data buffer containing the read data.</param>
+        /// <returns>Returns workcounter from last slave response.</returns>
+        [SuppressUnmanagedCodeSecurity]
+        [DllImport(EcShared.NATIVE_DLL_NAME)]
+        public static extern int NoCaSdoRead(IntPtr context, UInt16 slaveIndex, UInt16 sdoIndex, byte sdoSubIndex, byte[] dataset);
+
+        /// <summary>
         /// Configures the sync managers, FMMUs and the IO map of the EtherCAT network.
         /// </summary>
         /// <param name="ioMapPtr">An <see cref="IntPtr"/> to the IO map buffer.</param>

@@ -315,7 +315,8 @@ namespace EtherCAT.NET
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                 interfaceName = $@"rpcap://\Device\NPF_{networkInterface.Id}";
 
-            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux) ||
+                     RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
                 interfaceName = $"{interfaceName}";
 
             else
@@ -583,6 +584,17 @@ namespace EtherCAT.NET
                 dataset.Select(data => Marshal.SizeOf(data)).ToArray()
             );
         }
+
+        public static int SdoRead(IntPtr context, UInt16 slaveIndex, UInt16 sdoIndex, byte sdoSubIndex, ref byte[] dataset)
+        {
+            return EcHL.NoCaSdoRead(
+                context,
+                slaveIndex,
+                sdoIndex,
+                sdoSubIndex,
+                dataset
+            );
+        }       
 
         #endregion
     }
