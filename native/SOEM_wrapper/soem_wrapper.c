@@ -17,12 +17,25 @@
 #include <stdbool.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include "soem_wrapper.h"
 
 #define EC_VER2
 
+// size of firmware buffer
+#define FWBUFSIZE (30 * 1024 * 1024)
+char filebuffer[FWBUFSIZE]; // 30MB buffer
+
 // private
 int _referenceSlave;
+
+// FMMU / SM register content, needed to revert bootsrap config
+ec_fmmut FMMU[2];
+char fmmu_zero[sizeof(ec_fmmut)];
+
+ec_smt SM[2];
+char sm_zero[sizeof(ec_smt)];
+
 
 uint16 CalculateCrc(byte* data)
 {
@@ -329,25 +342,284 @@ int CALLCONV GetSyncManagerType(ecx_contextt* context, uint16 slaveIndex, uint16
     return 0;
 }
 
-int CALLCONV RequestOpState(ecx_contextt* context)
+/*
+ *  Clear FMMU and SM registers of slave in order to 
+ *  program bootstrap configuration
+ *
+ *  context: Current context pointer
+ *  slave: Slave number
+ */
+static void clear_FMMU_and_SM_registers(ecx_contextt* context, int slave)
+{
+    memset(sm_zero, 0, sizeof(sm_zero));
+    memset(fmmu_zero, 0, sizeof(fmmu_zero));
+
+    /* clean FMMU registers */
+    ecx_FPWR(context->port, context->slavelist[slave].configadr, ECT_REG_FMMU0, 
+        sizeof(fmmu_zero), fmmu_zero, EC_TIMEOUTRET3);
+    ecx_FPWR(context->port, context->slavelist[slave].configadr, ECT_REG_FMMU1, 
+        sizeof(fmmu_zero), fmmu_zero, EC_TIMEOUTRET3);
+
+    /* clean SM0 and SM1 registers to set new bootstrap values later */
+    ecx_FPWR(context->port, context->slavelist[slave].configadr, ECT_REG_SM0, 
+        sizeof(ec_smt), sm_zero, EC_TIMEOUTRET3);
+    ecx_FPWR(context->port, context->slavelist[slave].configadr, ECT_REG_SM1, 
+        sizeof(ec_smt), sm_zero, EC_TIMEOUTRET3);
+}
+
+/*
+ *  Set boot mailbox configuration master --> slave
+ * 
+ *  slave: Pointer to ec_slavet
+ *  startAddress: SM start address
+ *  length: SM length
+ */
+static void set_rx_boot_mailbox(ec_slavet* slave, uint16 startAddress, uint16 length)
+{
+    slave->SM[0].StartAddr = startAddress;
+    slave->SM[0].SMlength = length;
+    /* store boot write mailbox address */
+    slave->mbx_wo = startAddress;
+    /* store boot write mailbox size */
+    slave->mbx_l = length;
+}
+
+/*
+ *  Set boot mailbox configuration slave --> master
+ * 
+ *  slave: Pointer to ec_slavet
+ *  startAddress: SM start address
+ *  length: SM length
+ */
+static void set_tx_boot_mailbox(ec_slavet* slave, uint16 startAddress, uint16 length)
+{
+    slave->SM[1].StartAddr = startAddress;
+    slave->SM[1].SMlength = length;
+    /* store boot read mailbox address */
+    slave->mbx_ro = startAddress;
+    /* store boot read mailbox size */
+    slave->mbx_rl = length;
+}
+
+/*
+ *  Set SM mailbox bootstrap configuration
+ *
+ *  context: Current context pointer
+ *  slave: Slave number
+ */
+static void set_bootstrap(ecx_contextt* context, int slave)
+{
+    memset(FMMU, 0, sizeof(ec_fmmut) * 2);
+    /* read content of current FMMU registers */
+    ecx_FPRD(context->port, context->slavelist[slave].configadr, ECT_REG_FMMU0, 
+        sizeof(ec_fmmut), &FMMU[0], EC_TIMEOUTRET3);
+    ecx_FPRD(context->port, context->slavelist[slave].configadr, ECT_REG_FMMU1, 
+        sizeof(ec_fmmut), &FMMU[1], EC_TIMEOUTRET3);
+
+    memset(SM, 0, sizeof(ec_smt) * 2);
+    /* read content of current SM registers */
+    ecx_FPRD(context->port, context->slavelist[slave].configadr, ECT_REG_SM0, 
+        sizeof(ec_smt), &SM[0], EC_TIMEOUTRET3);
+    ecx_FPRD(context->port, context->slavelist[slave].configadr, ECT_REG_SM1, 
+	    sizeof(ec_smt), &SM[1], EC_TIMEOUTRET3);
+
+    clear_FMMU_and_SM_registers(context, slave);	
+
+    /* read BOOT mailbox data, master -> slave */
+    uint32 data = ecx_readeeprom(context, slave, ECT_SII_BOOTRXMBX, EC_TIMEOUTEEP);
+    set_rx_boot_mailbox(&context->slavelist[slave], (uint16)LO_WORD(data), (uint16)HI_WORD(data));
+
+    /* read BOOT mailbox data, slave -> master */
+    data = ecx_readeeprom(context, slave, ECT_SII_BOOTTXMBX, EC_TIMEOUTEEP);
+    set_tx_boot_mailbox(&context->slavelist[slave], (uint16)LO_WORD(data), (uint16)HI_WORD(data));
+
+    /* program SM0 mailbox in for slave */
+    ecx_FPWR (context->port, context->slavelist[slave].configadr, ECT_REG_SM0, 
+        sizeof(ec_smt), &context->slavelist[slave].SM[0], EC_TIMEOUTRET);
+    /* program SM1 mailbox out for slave */
+    ecx_FPWR (context->port, context->slavelist[slave].configadr, ECT_REG_SM1, 
+        sizeof(ec_smt), &context->slavelist[slave].SM[1], EC_TIMEOUTRET);
+}
+
+/*
+ *  Revert SM mailbox bootstrap configuration
+ *
+ *  context: Current context pointer
+ *  slave: Slave number
+ */
+static void revert_bootstrap(ecx_contextt* context, int slave)
+{
+    clear_FMMU_and_SM_registers(context, slave);
+
+    /* restore mailbox data, master -> slave */
+    set_rx_boot_mailbox(&context->slavelist[slave], SM[0].StartAddr, SM[0].SMlength);
+    /* restore mailbox data, slave -> master */
+    set_tx_boot_mailbox(&context->slavelist[slave], SM[1].StartAddr, SM[1].SMlength);
+
+    /* restore SM0 mailbox in for slave */
+    ecx_FPWR (context->port, context->slavelist[slave].configadr, ECT_REG_SM0, 
+        sizeof(ec_smt), &context->slavelist[slave].SM[0], EC_TIMEOUTRET);
+    /* restore SM1 mailbox out for slave */
+    ecx_FPWR (context->port, context->slavelist[slave].configadr, ECT_REG_SM1, 
+        sizeof(ec_smt), &context->slavelist[slave].SM[1], EC_TIMEOUTRET);
+
+    /* copy stored FMMU registers */
+    memcpy(&context->slavelist[slave].FMMU[0], &FMMU[0], sizeof(ec_fmmut));
+    memcpy(&context->slavelist[slave].FMMU[1], &FMMU[1], sizeof(ec_fmmut));
+
+    /* restore FMMU0 */
+    ecx_FPWR (context->port, context->slavelist[slave].configadr, ECT_REG_FMMU0, 
+        sizeof(ec_fmmut), &context->slavelist[slave].FMMU[0], EC_TIMEOUTRET);
+    /* restore FMMU0 */
+    ecx_FPWR (context->port, context->slavelist[slave].configadr, ECT_REG_FMMU1, 
+        sizeof(ec_fmmut), &context->slavelist[slave].FMMU[1], EC_TIMEOUTRET);
+}
+
+/*
+ *  Read firmware file to filebuffer
+ *
+ *  fileName: File name
+ *  length [out]: File length
+ *
+ *  returns: 1 if operation was successful, -1 otherwise
+ */
+static int read_file(const char *fileName, int *length)
+{
+    memset(&filebuffer, 0, FWBUFSIZE);
+
+    FILE * file = fopen(fileName, "rb");
+    if(file == NULL)
+        return -1;
+
+    int counter = 0, c;
+    while (((c = fgetc(file)) != EOF) && (counter < FWBUFSIZE))
+        filebuffer[counter ++] = (uint8)c;
+
+    *length = counter;
+    fclose(file);
+    return 1;
+}
+
+/*
+ *  Request new slave state.
+ *
+ *  context: Current context pointer
+    slave: Slave number
+ *  state: Requested slave state
+ *
+ *  returns: Slave state which was set
+ */
+uint16 CALLCONV RequestState(ecx_contextt* context, int slave, uint16 state)
+{
+    if(state == EC_STATE_BOOT)
+    {
+        // set mailbox bootstrap configuration
+        set_bootstrap(context, slave);
+    }
+
+    /* if current state is EC_STATE_BOOT and requested state is EC_STATE_INIT 
+        we have to restore FMMU and SM registers */
+    if((context->slavelist[slave].state == EC_STATE_BOOT) && 
+        (state == EC_STATE_INIT))
+    {
+        revert_bootstrap(context, slave);
+    }
+
+    context->slavelist[slave].state = state;
+    ecx_writestate(context, slave);
+	
+    uint16 slaveState = EC_STATE_NONE;
+    int counter = 10;
+
+    do
+    {
+        /* wait for slave to reach requested state,
+        returns current slave state */
+        slaveState = ecx_statecheck(context, slave, state, EC_TIMEOUTSTATE);
+    } while ((counter--) && (slaveState != state));
+
+    return slaveState;
+}
+
+/*
+ *  Return current slave state.
+ *
+ *  context: Current context pointer
+ *  slave: Slave number
+ *
+ *  returns: Current slave state
+ */
+uint16 CALLCONV GetState(ecx_contextt* context, int slave)
+{
+    return context->slavelist[slave].state;
+}
+
+/*
+ *  Download firmware file to slave.
+ *
+ *  context: Current context pointer
+ *  slave: Slave number
+ *  fileName: File name 
+ *  length: File length
+ *
+ *  returns: Workcounter from last slave response
+ */
+int CALLCONV DownloadFirmware(ecx_contextt* context, int slave, char *fileName, int length)
+{
+    if(context->slavelist[slave].state != EC_STATE_BOOT)
+        return -1;
+
+    int wk = 0;
+    int readLength = 0;
+    if(read_file(fileName, &readLength))
+    {
+        if(readLength == length)
+        {
+            wk = ecx_FOEwrite(context, slave, fileName, 0, readLength , &filebuffer, EC_TIMEOUTSTATE);
+        }
+    }
+
+    return  (wk > 0) ? 1 : -1; 
+}
+
+/*
+ *  Register callback for FoE.
+ *
+ *  context: Current context pointer
+ *  callback: Callback function pointer
+ *
+ */
+void CALLCONV RegisterFOECallback(ecx_contextt* context, int CALLCONV callback(uint16 slave, int packetnumber, int datasize))
+{
+    context->FOEhook = (int (*)(uint16 slave, int packetnumber, int datasize))callback;	
+}
+
+/*
+ *  Request specific state for all slaves.
+ *
+ *  context: Current context pointer
+ *  state: Requested state
+ *
+ *  returns: 1 if operation was successful, -0x0601 otherwise
+ */
+int CALLCONV RequestCommonState(ecx_contextt* context, uint16 state)
 {
     int counter = 200;
-
-    context->slavelist[0].state = EC_STATE_OPERATIONAL;
+    context->slavelist[0].state = state;
 
     ecx_send_processdata(context);
     ecx_receive_processdata(context, EC_TIMEOUTRET);
     ecx_writestate(context, 0);
 
-    // wait for all slaves to reach OP state
+    // wait for all slaves to reach state
     do
     {
         ecx_send_processdata(context);
         ecx_receive_processdata(context, EC_TIMEOUTRET);
-        ecx_statecheck(context, 0, EC_STATE_OPERATIONAL, 5 * EC_TIMEOUTSTATE);
-    } while (counter-- && (context->slavelist[0].state != EC_STATE_OPERATIONAL));
-
-    return context->slavelist[0].state == EC_STATE_OPERATIONAL ? 1 : -0x0601;
+        ecx_statecheck(context, 0, state, 5 * EC_TIMEOUTSTATE);
+    } while (counter-- && (context->slavelist[0].state != state));
+    
+    return context->slavelist[0].state == state ? 1 : -0x0601;
 }
 
 int CALLCONV CheckSafeOpState(ecx_contextt* context)
