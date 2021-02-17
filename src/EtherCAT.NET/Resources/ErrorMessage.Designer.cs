@@ -159,6 +159,15 @@ namespace EtherCAT {
         }
         
         /// <summary>
+        ///   Sucht eine lokalisierte Zeichenfolge, die One or more terminals did not reach PreOp-state. ähnelt.
+        /// </summary>
+        internal static string Native_0x0104 {
+            get {
+                return ResourceManager.GetString("Native_0x0104", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Sucht eine lokalisierte Zeichenfolge, die ConfigureIoMap() ähnelt.
         /// </summary>
         internal static string Native_0x0200 {

@@ -19,7 +19,7 @@ namespace SampleMaster
         static async Task Main(string[] args)
         {          
             /* Set interface name. Edit this to suit your needs. */
-            var interfaceName = "Lokal";
+            var interfaceName = "eth0";
 
             /* Set ESI location. Make sure it contains ESI files! The default path is /home/{user}/.local/share/ESI */
             var localAppDataPath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
@@ -138,6 +138,8 @@ namespace SampleMaster
                 cts.Cancel();
                 await task;
             }
+
+            return; /* remove this to run real world sample*/
 
             /* create EC Master (real world sample) */
             using (var master = new EcMaster(settings, logger))
