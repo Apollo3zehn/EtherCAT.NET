@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "SampleMaster": {
+      "commandName": "Project",
+      "nativeDebugging": true
+    }
+  }
+}
