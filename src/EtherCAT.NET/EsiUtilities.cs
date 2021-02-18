@@ -151,8 +151,8 @@ namespace EtherCAT.NET
                 {
                     var found = !string.IsNullOrWhiteSpace(currentDevice.Type.ProductCode) &&
                                 !string.IsNullOrWhiteSpace(currentDevice.Type.RevisionNo) &&
-                                (int)EsiUtilities.ParseHexDecString(currentDevice.Type.ProductCode) == productCode &&
-                                (int)EsiUtilities.ParseHexDecString(currentDevice.Type.RevisionNo) == revision;
+                                (uint)EsiUtilities.ParseHexDecString(currentDevice.Type.ProductCode) == productCode &&
+                                (uint)EsiUtilities.ParseHexDecString(currentDevice.Type.RevisionNo) == revision;
 
                     if (found)
                         info = currentInfo;
