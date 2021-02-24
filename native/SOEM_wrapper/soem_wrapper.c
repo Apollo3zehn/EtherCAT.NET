@@ -559,12 +559,12 @@ int CALLCONV ScanDevices(ecx_contextt* context, char* interfaceName, ec_slave_in
         *slaveInfoSet = (ec_slave_info_t*)calloc(*context->slavecount + 1, sizeof(ec_slave_info_t));
         *slaveCount = *context->slavecount;
 
-        // wait for all slaves to reach PREOP state
-        int counter = 200;
+        // request PREOP state for all slaves
+        int counter = 5;
 
         do
         {
-            ecx_statecheck(context, 0, EC_STATE_PRE_OP | EC_STATE_ACK, 5 * EC_TIMEOUTSTATE);
+            ecx_statecheck(context, 0, EC_STATE_PRE_OP, EC_TIMEOUTSTATE);
         } while (counter-- && (context->slavelist[0].state != (EC_STATE_PRE_OP | EC_STATE_ACK)));
 
         if (context->slavelist[0].state != (EC_STATE_PRE_OP | EC_STATE_ACK))
