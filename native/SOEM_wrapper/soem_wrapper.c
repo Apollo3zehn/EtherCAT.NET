@@ -606,16 +606,25 @@ int CALLCONV RequestCommonState(ecx_contextt* context, uint16 state)
 {
     int counter = 200;
     context->slavelist[0].state = state;
+    bool operationalState = (state == EC_STATE_OPERATIONAL);
 
-    ecx_send_processdata(context);
-    ecx_receive_processdata(context, EC_TIMEOUTRET);
+    if(operationalState)
+    {
+        ecx_send_processdata(context);
+        ecx_receive_processdata(context, EC_TIMEOUTRET);
+    }
+
     ecx_writestate(context, 0);
 
     // wait for all slaves to reach state
     do
     {
-        ecx_send_processdata(context);
-        ecx_receive_processdata(context, EC_TIMEOUTRET);
+        if(operationalState)
+        {
+            ecx_send_processdata(context);
+            ecx_receive_processdata(context, EC_TIMEOUTRET);
+        }
+
         ecx_statecheck(context, 0, state, 5 * EC_TIMEOUTSTATE);
     } while (counter-- && (context->slavelist[0].state != state));
     
