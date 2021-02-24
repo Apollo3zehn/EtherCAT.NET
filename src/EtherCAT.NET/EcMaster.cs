@@ -379,6 +379,75 @@ namespace EtherCAT.NET
             }
         }
 
+
+        /// <summary>
+        /// Configure ip settings of ethernet switchport slave.
+        /// </summary>
+        /// <param name="slaveIndex">Slave index.</param>
+        /// <param name="port">Slave port.</param>
+        /// <param name="eoeParam">Object containing relevant ip configuration settings.</param>
+        /// <param name="timeout">Timeout in us</param>
+        /// <returns>True if operation was successful, false otherwise.</returns>
+        public bool SetEthernetIpSettings(int slaveIndex, byte port, eoe_param_t eoeParam, int timeout = 700000)
+        {
+            IntPtr inPtr = Marshal.AllocHGlobal(Marshal.SizeOf(eoeParam));
+            Marshal.StructureToPtr(eoeParam, inPtr, false);
+
+            int workCounter = EcEoE.ecx_EOEsetIp(this.Context, (ushort)slaveIndex, port, inPtr, timeout);
+            return workCounter > 0;
+        }
+
+
+        /// <summary>
+        /// Recieve ip settings of ethernet switchport slave.
+        /// </summary>
+        /// <param name="slaveIndex">Slave index.</param>
+        /// <param name="port">Slave port.</param>
+        /// <param name="eoeParam">Object containing relevant ip configuration settings.</param>
+        /// <param name="timeout">Timeout in us</param>
+        /// <returns>True if operation was successful, false otherwise.</returns>
+        public bool GetEthernetIpSettings(int slaveIndex, byte port, out eoe_param_t eoeParam, int timeout = 700000)
+        {
+            IntPtr outPtr = IntPtr.Zero;
+            int workCounter = EcEoE.ecx_EOEgetIp(this.Context, (ushort)slaveIndex, port, outPtr, timeout);
+
+            eoeParam = Marshal.PtrToStructure<eoe_param_t>(outPtr);
+            return workCounter > 0;
+        }
+
+
+        /// <summary>
+        /// Send data over ethernet.
+        /// </summary>
+        /// <param name="slaveIndex">Slave index.</param>
+        /// <param name="port">Slave port.</param>
+        /// <param name="size">Data size.</param>
+        /// <param name="data">Data to send.</param>
+        /// <param name="timeout">Timeout in us</param>
+        /// <returns>True if operation was successful, false otherwise.</returns>
+        public bool SendEthernet(int slaveIndex, byte port, int size, IntPtr data, int timeout)
+        {
+            int workCounter = EcEoE.ecx_EOEsend(this.Context, (ushort)slaveIndex, port, size, data, timeout = 700000);
+            return workCounter > 0;
+        }
+
+
+        /// <summary>
+        /// Receive data over ethernet.
+        /// </summary>
+        /// <param name="slaveIndex">Slave index.</param>
+        /// <param name="port">Slave port.</param>
+        /// <param name="size">Data size of received data.</param>
+        /// <param name="data">Received data.</param>
+        /// <param name="timeout">Timeout in us</param>
+        /// <returns>True if operation was successful, false otherwise.</returns>
+        public bool ReceiveEthernet(int slaveIndex, byte port, ref int size, IntPtr data, int timeout)
+        {
+            int workCounter = EcEoE.ecx_EOErecv(this.Context, (ushort)slaveIndex, port, ref size, data, timeout = 700000);
+            return workCounter > 0;
+        }
+
+
         /// <summary>
         /// Activate watchdog. 
         /// </summary>

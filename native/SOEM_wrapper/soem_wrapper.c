@@ -131,6 +131,7 @@ ecx_contextt* CALLCONV CreateContext()
     context->DCtO = 0;
     context->DCl = 0;
     context->FOEhook = NULL;
+    context->EOEhook = NULL;
 
     context->port = (ecx_portt*)calloc(1, sizeof(ecx_portt));
     context->slavelist = (ec_slavet*)calloc(EC_MAXSLAVE, sizeof(ec_slavet));
@@ -592,6 +593,18 @@ int CALLCONV DownloadFirmware(ecx_contextt* context, int slave, char *fileName, 
 void CALLCONV RegisterFOECallback(ecx_contextt* context, int CALLCONV callback(uint16 slave, int packetnumber, int datasize))
 {
     context->FOEhook = (int (*)(uint16 slave, int packetnumber, int datasize))callback;	
+}
+
+/*
+ *  Register callback for EoE.
+ *
+ *  context: Current context pointer
+ *  callback: Callback function pointer
+ *
+ */
+void CALLCONV RegisterEOECallback(ecx_contextt* context, int CALLCONV callback(ecx_contextt * context, uint16 slave, void * eoembx))
+{
+    context->EOEhook = (int (*)(ecx_contextt * context, uint16 slave, void * eoembx))callback;	
 }
 
 /*

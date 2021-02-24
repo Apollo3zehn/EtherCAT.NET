@@ -12,6 +12,9 @@ namespace SOEM.PInvoke
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         public delegate int FOECallback(UInt16 slave, int packetnumber, int datasize);
 
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        public delegate int EoECallback(IntPtr context, UInt16 slave, IntPtr eoembx);
+
 
         #region "Helper"
 
@@ -167,6 +170,13 @@ namespace SOEM.PInvoke
         [SuppressUnmanagedCodeSecurity]
         [DllImport(EcShared.NATIVE_DLL_NAME)]
         public static extern void RegisterFOECallback(IntPtr context, [MarshalAs(UnmanagedType.FunctionPtr)] FOECallback callback);
+
+
+
+        [SuppressUnmanagedCodeSecurity]
+        [DllImport(EcShared.NATIVE_DLL_NAME)]
+        public static extern void RegisterEOECallback(IntPtr context, [MarshalAs(UnmanagedType.FunctionPtr)] EoECallback callback);
+        
 
 
         /// <summary>
