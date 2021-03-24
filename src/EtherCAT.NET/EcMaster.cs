@@ -11,6 +11,7 @@ using System.Net.NetworkInformation;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
+using System.IO;
 
 namespace EtherCAT.NET
 {
@@ -52,6 +53,7 @@ namespace EtherCAT.NET
         private bool _isReconfiguring;
         private CancellationTokenSource _cts;
         private Task _watchdogTask;
+        private bool _watchDogActive = true;
 
         #endregion
 
@@ -278,7 +280,7 @@ namespace EtherCAT.NET
 
             #region "Op"
 
-            EcUtilities.CheckErrorCode(this.Context, EcHL.RequestOpState(this.Context), nameof(EcHL.RequestOpState));
+            EcUtilities.CheckErrorCode(this.Context, EcHL.RequestCommonState(this.Context, (UInt16)SlaveState.Operational), nameof(EcHL.RequestCommonState));
 
             #endregion
 
@@ -377,56 +379,157 @@ namespace EtherCAT.NET
             }
         }
 
+        /// <summary>
+        /// Activate watchdog. 
+        /// </summary>
+        /// <param name="value">True: Watchdog is activated,
+        /// false: Watchdog is deactivated.</param>
+        public void ActivateWatchdog(bool value)
+        {
+            _watchDogActive = value;
+        }
+
+        /// <summary>
+        /// Request slave state transition. 
+        /// </summary>
+        /// <param name="slaveIndex">Slave index.</param>
+        /// <param name="slaveState">Slave target state.</param>
+        /// <returns>True if transition was successful, false otherwise./returns>
+        public bool RequestState(int slaveIndex, SlaveState slaveState)
+        {
+            UInt16 stateSet = EcHL.RequestState(this.Context, slaveIndex, (UInt16)slaveState);
+            return (SlaveState)stateSet == slaveState;
+        }
+
+        /// <summary>
+        /// Return current state of slave. 
+        /// </summary>
+        /// <param name="slaveIndex">Slave index.</param>
+        /// <returns>Current slave state./returns>
+        public SlaveState GetState(int slaveIndex)
+        {
+            ushort slaveState = EcHL.GetState(this.Context, slaveIndex);
+            return (SlaveState)slaveState;
+        }
+
+        /// <summary>
+        /// Download firmware file to slave.
+        /// 1. All detected slaves are set to PREOP state.
+        /// 2. Target slave is set to INIT state.
+        /// 3. Target slave is set to BOOT state.
+        /// 4. Firmware file is downloaded to target slave.
+        /// 5. Target slave is set to INIT state regardless of whether
+        /// the file download was successful or not.
+        /// </summary>
+        /// <param name="slaveIndex">Slave index.</param>
+        /// <param name="fileName">Absolute path to firmware file.</param>
+        /// <returns>True if operation was successful, false otherwise./returns>
+        public bool DownloadFirmware(int slaveIndex, string fileName)
+        { 
+            FileInfo fileInfo = new FileInfo(fileName);
+            if (!fileInfo.Exists)
+                return false;
+
+            bool success = false;
+            if (EcHL.RequestCommonState(this.Context, (UInt16)SlaveState.PreOp) == 1)
+            {
+                UInt16 currentState = EcHL.RequestState(this.Context, slaveIndex, (UInt16)SlaveState.Init);
+                if (currentState == (UInt16)SlaveState.Init)
+                {
+                    currentState = EcHL.RequestState(this.Context, slaveIndex, (UInt16)SlaveState.Boot);
+                    if (currentState == (UInt16)SlaveState.Boot)
+                    {
+                        int currentPackageNumber = -1;
+                        int totalPackages = 0;
+                        int remainingSize = -1;
+
+                        EcHL.FOECallback callback = (slaveIndex, packageNumber,  datasize) =>
+                        {
+                            if(packageNumber == 0)
+                                _logger.LogInformation($"FoE: Write {datasize} bytes to {slaveIndex}. slave");
+                            else
+                                _logger.LogInformation($"FoE: {packageNumber}. package with {remainingSize - datasize} bytes written to {slaveIndex}. slave. Remaining data: {datasize} bytes");
+
+                            if (currentPackageNumber != packageNumber)
+                            {
+                                currentPackageNumber = packageNumber;
+                                if(packageNumber != 0)
+                                    totalPackages++;
+                            }
+
+                            remainingSize = datasize;
+                            return 0;
+                        };
+
+                        EcHL.RegisterFOECallback(this.Context, callback);
+                        GC.KeepAlive(callback);
+
+                        int wk = EcHL.DownloadFirmware(this.Context, slaveIndex, fileName, (int)fileInfo.Length);
+
+                        _logger.LogInformation($"FoE: {totalPackages} packages written");
+                        success = (remainingSize == 0) && (wk > 0);
+
+                        EcHL.RequestState(this.Context, slaveIndex, (UInt16)SlaveState.Init);
+                    }
+                }
+            }
+
+            return success;
+        }
+
+
         #endregion
 
         private void WatchdogRoutine()
         {
             while (!_cts.IsCancellationRequested)
             {
-                var state = EcHL.ReadState(this.Context);
-
-                if (state < 8)
+                if (_watchDogActive)
                 {
-                    _statusCheckFailedCounter++;
+                    var state = EcHL.ReadState(this.Context);
 
-                    if (_statusCheckFailedCounter >= _settings.MaxRetries)
+                    if (state < 8)
                     {
-                        try
+                        _statusCheckFailedCounter++;
+
+                        if (_statusCheckFailedCounter >= _settings.MaxRetries)
                         {
-                            lock (_lock)
+                            try
                             {
-                                _isReconfiguring = true;
-                                _logger.LogInformation("reconfiguration started");
+                                lock (_lock)
+                                {
+                                    _isReconfiguring = true;
+                                    _logger.LogInformation("reconfiguration started");
+                                }
+
+                                this.Configure();
+                                _logger.LogInformation("reconfiguration successful");
+
+                                _isReconfiguring = false;
                             }
-
-                            this.Configure();
-                            _logger.LogInformation("reconfiguration successful");
-
+                            catch (Exception)
+                            {
+                                _logger.LogWarning("reconfiguration failed");
+                            }
+                            finally
+                            {
+                                _statusCheckFailedCounter = 0;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        if (_isReconfiguring)
+                        {
+                            _logger.LogInformation("communication restored");
                             _isReconfiguring = false;
                         }
-                        catch (Exception)
-                        {
-                            _logger.LogWarning("reconfiguration failed");
-                        }
-                        finally
-                        {
-                            _statusCheckFailedCounter = 0;
-                        }
-                    }
-                }
-                else
-                {
-                    if (_isReconfiguring)
-                    {
-                        _logger.LogInformation("communication restored");
-                        _isReconfiguring = false;
-                    }
 
-                    _statusCheckFailedCounter = 0;
+                        _statusCheckFailedCounter = 0;
+                    }    
                 }
-
                 _cts.Token.WaitHandle.WaitOne(TimeSpan.FromSeconds(_settings.WatchdogSleepTime));
-            }
+            }   
         }
 
         #region IDisposable Support

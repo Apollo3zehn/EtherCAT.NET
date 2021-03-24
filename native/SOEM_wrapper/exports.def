@@ -17,7 +17,11 @@ EXPORTS
     ReadSlaveState
     ReadState
     RegisterCallback
-    RequestOpState
+    RequestState
+    GetState
+    DownloadFirmware
+    RegisterFOECallback
+    RequestCommonState
     ScanDevices
     SdoWrite
     UpdateCsa

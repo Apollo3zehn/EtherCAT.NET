@@ -9,6 +9,10 @@ namespace SOEM.PInvoke
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         public delegate double PO2SOCallback(UInt16 slaveIndex);
 
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        public delegate int FOECallback(UInt16 slave, int packetnumber, int datasize);
+
+
         #region "Helper"
 
         #endregion
@@ -134,12 +138,45 @@ namespace SOEM.PInvoke
         public static extern int CheckSafeOpState(IntPtr context);
 
         /// <summary>
-        /// Requests OP state.
+        /// Requests slave state.
         /// </summary>
-        /// <returns>Returns the status code of the unmanaged operation.</returns>
+        /// <returns>Returns the current state of slave.</returns>
         [SuppressUnmanagedCodeSecurity]
         [DllImport(EcShared.NATIVE_DLL_NAME)]
-        public static extern int RequestOpState(IntPtr context);
+        public static extern UInt16 RequestState(IntPtr context, int slaveIndex, UInt16 state);
+
+
+        /// <summary>
+        /// Gets current slave state.
+        /// </summary>
+        /// <returns>Returns the current state of slave.</returns>
+        [SuppressUnmanagedCodeSecurity]
+        [DllImport(EcShared.NATIVE_DLL_NAME)]
+        public static extern UInt16 GetState(IntPtr context, int slaveIndex);
+
+
+        /// <summary>
+        /// Downloads firmware file to slave.
+        /// </summary>
+        /// <returns>Returns workcounter from last slave response.</returns>
+        [SuppressUnmanagedCodeSecurity]
+        [DllImport(EcShared.NATIVE_DLL_NAME)] 
+        public static extern int DownloadFirmware(IntPtr context, int slaveIndex, string fileName, int length);
+
+
+        [SuppressUnmanagedCodeSecurity]
+        [DllImport(EcShared.NATIVE_DLL_NAME)]
+        public static extern void RegisterFOECallback(IntPtr context, [MarshalAs(UnmanagedType.FunctionPtr)] FOECallback callback);
+
+
+        /// <summary>
+        /// Request specific state for all slaves.
+        /// </summary>
+        /// <returns>Returns 1 if operation was successful, -0x0601 otherwise.</returns>
+        [SuppressUnmanagedCodeSecurity]
+        [DllImport(EcShared.NATIVE_DLL_NAME)]
+        public static extern int RequestCommonState(IntPtr context, UInt16 state);
+
 
         [SuppressUnmanagedCodeSecurity]
         [DllImport(EcShared.NATIVE_DLL_NAME)]
