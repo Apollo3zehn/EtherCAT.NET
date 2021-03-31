@@ -1,11 +1,14 @@
 #ifndef VIRT_NET
 #define VIRT_NET
 
+#include <stdlib.h>
+#include <stdbool.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-bool create_virtual_network_device(char *interface, char* interfaceSet);
+bool create_virtual_network_device(char* interfaceName, char* interfaceSet);
 
 void close_virtual_network_device();
 

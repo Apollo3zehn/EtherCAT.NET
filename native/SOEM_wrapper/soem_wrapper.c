@@ -620,14 +620,14 @@ void CALLCONV RegisterFOECallback(ecx_contextt* context, int CALLCONV callback(u
  *  Create virtual network device.
  *
  *  context: Current context pointer.
- *  interface: Virtual network interface name.
+ *  interfaceName: Virtual network interface name.
  *
  *  returns: True if operation was successful, false otherwise.
  */
-bool CALLCONV CreateVirtualNetworkDevice(ecx_contextt* context, char *interface)
+bool CALLCONV CreateVirtualNetworkDevice(ecx_contextt* context, char *interfaceName)
 {
     memset(virtNetDevice, 0, sizeof(virtNetDevice));
-    bool result = create_virtual_network_device(interface, virtNetDevice);
+    bool result = create_virtual_network_device(interfaceName, virtNetDevice);
     
     if(result)
         ecx_EOEdefinehook(context, eoe_hook);

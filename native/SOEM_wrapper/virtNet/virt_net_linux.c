@@ -38,13 +38,13 @@ int fd = -1;
 /*
  *  Create virtual TAP network device.
  *
- *  interface: Virtual network interface name. If interface is '\0', the kernel 
+ *  interfaceName: Virtual network interface name. If interface is '\0', the kernel 
  *  will try to create the first available interface (eg, tap0, tap1 .... tapn).
  *  interfaceSet: Virtual network interface name set by kernel.
  *
  *  returns: True if operation was successful, false otherwise.
  */
-bool create_virtual_network_device(char *interface, char* interfaceSet)
+bool create_virtual_network_device(char *interfaceName, char* interfaceSet)
 {
     char* clonedev = "/dev/net/tun";
     if( (fd = open(clonedev, O_RDWR | O_NONBLOCK )) < 0 ) 
@@ -54,8 +54,8 @@ bool create_virtual_network_device(char *interface, char* interfaceSet)
     memset(&ifr, 0, sizeof(ifr));
     ifr.ifr_flags = IFF_TAP | IFF_NO_PI;
 
-    if(*interface)
-        strncpy(ifr.ifr_name, interface, IFNAMSIZ);
+    if(*interfaceName)
+        strncpy(ifr.ifr_name, interfaceName, IFNAMSIZ);
 
     int err = 0;
     if( (err = ioctl(fd, TUNSETIFF, (void*)&ifr)) < 0 )

@@ -1,11 +1,8 @@
-
-#include <stdlib.h>
-#include <stdbool.h>
 #include <assert.h>
 #include "virt_net.h"
 
 
-bool create_virtual_network_device(char *interface, char* interfaceSet)
+bool create_virtual_network_device(char *interfaceName, char* interfaceSet)
 {
     assert("Not implemented for current platform");
     return false;
