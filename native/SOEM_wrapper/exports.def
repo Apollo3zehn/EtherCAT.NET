@@ -21,6 +21,10 @@ EXPORTS
     GetState
     DownloadFirmware
     RegisterFOECallback
+    CreateVirtualNetworkDevice
+    CloseVirtualNetworkDevice
+    SendEthernetFramesToSlave
+    ReadEthernetFramesFromSlave
     RequestCommonState
     ScanDevices
     SdoWrite

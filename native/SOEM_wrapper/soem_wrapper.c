@@ -19,6 +19,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "soem_wrapper.h"
+#include "virtNet/virt_net.h"
+
 
 #define EC_VER2
 
@@ -35,6 +37,25 @@ char fmmu_zero[sizeof(ec_fmmut)];
 
 ec_smt SM[2];
 char sm_zero[sizeof(ec_smt)];
+
+// virtual network device buffer
+uint8_t netBuffer[1500];
+// virtual network device name
+char virtNetDevice[100];
+
+// current RX fragment number */
+uint8_t rxfragmentno = 0;
+// complete rx frame size of current frame */
+uint16_t rxframesize = 0;
+// current rx data offset in frame */
+uint16_t rxframeoffset = 0;
+// current rx frame number */
+uint16_t rxframeno = 0;
+uint8 rxbuf[1500];
+int size_of_rx = sizeof(rxbuf);
+
+static int eoe_hook(ecx_contextt*, uint16, void*);
+
 
 
 uint16 CalculateCrc(byte* data)
@@ -596,15 +617,113 @@ void CALLCONV RegisterFOECallback(ecx_contextt* context, int CALLCONV callback(u
 }
 
 /*
- *  Register callback for EoE.
+ *  Create virtual network device.
  *
- *  context: Current context pointer
- *  callback: Callback function pointer
+ *  context: Current context pointer.
+ *  interface: Virtual network interface name.
+ *
+ *  returns: True if operation was successful, false otherwise.
+ */
+bool CALLCONV CreateVirtualNetworkDevice(ecx_contextt* context, char *interface)
+{
+    memset(virtNetDevice, 0, sizeof(virtNetDevice));
+    bool result = create_virtual_network_device(interface, virtNetDevice);
+    
+    if(result)
+        ecx_EOEdefinehook(context, eoe_hook);
+    
+    return result;
+}
+
+/*
+ *  Close virtual network device.
  *
  */
-void CALLCONV RegisterEOECallback(ecx_contextt* context, int CALLCONV callback(ecx_contextt * context, uint16 slave, void * eoembx))
+void CALLCONV CloseVirtualNetworkDevice()
 {
-    context->EOEhook = (int (*)(ecx_contextt * context, uint16 slave, void * eoembx))callback;	
+    close_virtual_network_device();
+}
+
+/*
+ *  Read data from virtual network interface and  
+ *  foreward ethernet frames with EoE to slave.
+ *
+ *  context: Current context pointer.
+ *  slave: Slave number.
+ *
+ *  returns: True if any data was forewarded, false otherwise.
+ */
+bool CALLCONV SendEthernetFramesToSlave(ecx_contextt* context, int slave)
+{
+    long size = read_virtual_network_device(netBuffer, sizeof(netBuffer));
+    int wk = 0;
+
+    if(size > 0)
+    {
+        ec_etherheadert *bp = (ec_etherheadert *)netBuffer;
+        uint16 type = (bp->etype << 8 | bp->etype >> 8);
+       
+        if (type != ETH_P_ECAT)
+        {
+            wk = ecx_EOEsend(context, slave, 0, size, (void*)netBuffer, 0);
+        }
+    }
+
+    return (size > 0) && (wk > 0) ? true : false;
+}
+
+/*
+ *  Read EoE frames from slave device. Ethernet data is extracted
+ *  and forewarded to virtual network interface in eoe_hook.
+ *
+ *  context: Current context pointer.
+ *  slave: Slave number.
+ *
+ *  returns: True if any data was received, false otherwise.
+ */
+bool CALLCONV ReadEthernetFramesFromSlave(ecx_contextt* context, int slave)
+{
+    ec_mbxbuft mbxIn;
+    int retInject = 0;
+    return (ecx_mbxreceive(context, slave, (ec_mbxbuft *)&mbxIn, 0) == 1);
+}
+
+/*
+ *  Hook is called if EoE frames from slave device have been received.
+ *  Ethernet frames are extracted from ECAT datagrams and forewarded to 
+ *  virtual network interface.
+ *
+ *  context: Current context pointer.
+ *  slave: Slave number.
+ *
+ *  returns: 1 if operation was successful, -1 otherwise.
+ */
+static int eoe_hook(ecx_contextt * context, uint16 slave, void * eoembx)
+{
+    int wk;
+    long size = -1;
+    size_of_rx = sizeof(rxbuf);
+
+    wk = ecx_EOEreadfragment(eoembx,
+        &rxfragmentno,
+        &rxframesize,
+        &rxframeoffset,
+        &rxframeno,
+        &size_of_rx,
+        rxbuf);
+
+    if (wk > 0)
+    {
+        ec_etherheadert *bp = (ec_etherheadert *)rxbuf;        
+        uint16 type = (bp->etype << 8 | bp->etype >> 8);
+
+        if(type != ETH_P_ECAT)
+        {   
+            size = write_virtual_network_device(bp, size_of_rx);
+        }
+    }
+
+    return (size > 0) && (wk > 0) ? 1 : 0;
 }
 
 /*
@@ -859,6 +978,16 @@ int CALLCONV ScanDevices(ecx_contextt* context, char* interfaceName, ec_slave_in
         do
         {
             ecx_statecheck(context, 0, EC_STATE_PRE_OP, EC_TIMEOUTSTATE);
+            
+            for (int slaveIndex = 1; slaveIndex < *context->slavecount + 1; slaveIndex++)
+            {
+                if(context->slavelist[slaveIndex].state != (EC_STATE_PRE_OP | EC_STATE_ACK))
+                {
+                    context->slavelist[slaveIndex].state = EC_STATE_PRE_OP | EC_STATE_ACK;
+                    ecx_writestate(context, slaveIndex);
+                }
+            }
+            
         } while (counter-- && (context->slavelist[0].state != (EC_STATE_PRE_OP | EC_STATE_ACK)));
 
         if (context->slavelist[0].state != (EC_STATE_PRE_OP | EC_STATE_ACK))

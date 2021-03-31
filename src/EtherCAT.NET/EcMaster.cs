@@ -447,6 +447,46 @@ namespace EtherCAT.NET
             return workCounter > 0;
         }
 
+        /// <summary>
+        /// Create virtual network device.
+        /// </summary>
+        /// <param name="interfaceName">Virtual device interface name.</param>
+        /// <returns>True if operation was successful, false otherwise.</returns>
+        public bool CreateVirtualNetworkDevice(string interfaceName)
+        {
+            return EcHL.CreateVirtualNetworkDevice(this.Context, interfaceName);
+        }
+
+        /// <summary>
+        /// Close virtual network device.
+        /// </summary>
+        public void CloseVirtualNetworkDevice()
+        {
+            EcHL.CloseVirtualNetworkDevice();
+        }
+
+        /// <summary>
+        /// Read ethernet data from virtual network interface. Ethernet frames
+        /// are then forwarded to slave device wrapped in EoE datagrams.
+        /// </summary>
+        /// <param name="slaveIndex">Slave index.</param>
+        /// <returns>True if operation was successful, false otherwise.</returns>
+        public bool SendEthernetFramesToSlave(int slaveIndex)
+        {
+            return EcHL.SendEthernetFramesToSlave(this.Context, (ushort)slaveIndex);
+        }
+
+        /// <summary>
+        /// Read ethernet data from slave device. Ethernet frames are extracted
+        /// from EoE datagrams and forewarded to virtual network device.
+        /// </summary>
+        /// <param name="slaveIndex">Slave index.</param>
+        /// <returns>True if operation was successful, false otherwise.</returns>
+        public bool ReadEthernetFramesFromSlave(int slaveIndex)
+        {
+            return EcHL.ReadEthernetFramesFromSlave(this.Context, (ushort)slaveIndex);
+        }
+
 
         /// <summary>
         /// Activate watchdog. 
