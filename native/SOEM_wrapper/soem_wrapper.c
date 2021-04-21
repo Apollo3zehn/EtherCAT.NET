@@ -52,10 +52,6 @@ uint16_t rxframeoffset = 0;
 // current rx frame number */
 uint16_t rxframeno = 0;
 uint8 rxbuf[1500];
-int size_of_rx = sizeof(rxbuf);
-
-static int eoe_hook(ecx_contextt*, uint16, void*);
-
 
 
 uint16 CalculateCrc(byte* data)
@@ -601,7 +597,7 @@ int CALLCONV DownloadFirmware(ecx_contextt* context, int slave, char *fileName, 
         }
     }
 
-    return  (wk > 0) ? 1 : -1; 
+    return  (wk > 0) ? 1 : -1;
 }
 
 /*
@@ -622,26 +618,22 @@ void CALLCONV RegisterFOECallback(ecx_contextt* context, int CALLCONV callback(u
  *  context: Current context pointer.
  *  interfaceName: Virtual network interface name.
  *
- *  returns: True if operation was successful, false otherwise.
+ *  returns: Virtual network device Id != -1 if successful.
  */
-bool CALLCONV CreateVirtualNetworkDevice(ecx_contextt* context, char *interfaceName)
+int CALLCONV CreateVirtualNetworkDevice(ecx_contextt* context, char *interfaceName)
 {
     memset(virtNetDevice, 0, sizeof(virtNetDevice));
-    bool result = create_virtual_network_device(interfaceName, virtNetDevice);
-    
-    if(result)
-        ecx_EOEdefinehook(context, eoe_hook);
-    
-    return result;
+    return create_virtual_network_device(interfaceName, virtNetDevice);
 }
 
 /*
  *  Close virtual network device.
+ *  deviceId: Virtual network device Id.
  *
  */
-void CALLCONV CloseVirtualNetworkDevice()
+void CALLCONV CloseVirtualNetworkDevice(int deviceId)
 {
-    close_virtual_network_device();
+    close_virtual_network_device(deviceId);
 }
 
 /*
@@ -650,12 +642,13 @@ void CALLCONV CloseVirtualNetworkDevice()
  *
  *  context: Current context pointer.
  *  slave: Slave number.
+ *  deviceId: Virtual network device Id.
  *
  *  returns: True if any data was forewarded, false otherwise.
  */
-bool CALLCONV SendEthernetFramesToSlave(ecx_contextt* context, int slave)
+bool CALLCONV SendEthernetFramesToSlave(ecx_contextt* context, int slave, int deviceId)
 {
-    long size = read_virtual_network_device(netBuffer, sizeof(netBuffer));
+    long size = read_virtual_network_device(netBuffer, sizeof(netBuffer), deviceId);
     int wk = 0;
 
     if(size > 0)
@@ -678,39 +671,15 @@ bool CALLCONV SendEthernetFramesToSlave(ecx_contextt* context, int slave)
  *
  *  context: Current context pointer.
  *  slave: Slave number.
+ *  deviceId: Virtual network device Id.
  *
  *  returns: True if any data was received, false otherwise.
  */
-bool CALLCONV ReadEthernetFramesFromSlave(ecx_contextt* context, int slave)
+bool CALLCONV ReadEthernetFramesFromSlave(ecx_contextt* context, int slave, int deviceId)
 {
-    ec_mbxbuft mbxIn;
-    int retInject = 0;
-    return (ecx_mbxreceive(context, slave, (ec_mbxbuft *)&mbxIn, 0) == 1);
-}
-
-/*
- *  Hook is called if EoE frames from slave device have been received.
- *  Ethernet frames are extracted from ECAT datagrams and forewarded to 
- *  virtual network interface.
- *
- *  context: Current context pointer.
- *  slave: Slave number.
- *
- *  returns: 1 if operation was successful, -1 otherwise.
- */
-static int eoe_hook(ecx_contextt * context, uint16 slave, void * eoembx)
-{
-    int wk;
-    long size = -1;
-    size_of_rx = sizeof(rxbuf);
-
-    wk = ecx_EOEreadfragment(eoembx,
-        &rxfragmentno,
-        &rxframesize,
-        &rxframeoffset,
-        &rxframeno,
-        &size_of_rx,
-        rxbuf);
+    int size_of_rx = sizeof(rxbuf);
+    int wk = ecx_EOErecv(context, slave, 0, &size_of_rx, (void*)&rxbuf, 0);
+    long size = 0;
 
     if (wk > 0)
     {
@@ -718,12 +687,12 @@ static int eoe_hook(ecx_contextt * context, uint16 slave, void * eoembx)
         uint16 type = (bp->etype << 8 | bp->etype >> 8);
 
         if(type != ETH_P_ECAT)
-        {   
-            size = write_virtual_network_device(bp, size_of_rx);
+        {
+            size = write_virtual_network_device(bp, size_of_rx, deviceId);
         }
     }
 
-    return (size > 0) && (wk > 0) ? 1 : 0;
+    return (size > 0) && (wk > 0) ? true : false;
 }
 
 /*

@@ -451,18 +451,19 @@ namespace EtherCAT.NET
         /// Create virtual network device.
         /// </summary>
         /// <param name="interfaceName">Virtual device interface name.</param>
-        /// <returns>True if operation was successful, false otherwise.</returns>
-        public bool CreateVirtualNetworkDevice(string interfaceName)
+        /// <returns>Device Id of virtual network device.</returns>
+        public int CreateVirtualNetworkDevice(string interfaceName)
         {
             return EcHL.CreateVirtualNetworkDevice(this.Context, interfaceName);
         }
 
         /// <summary>
         /// Close virtual network device.
+        /// <param name="deviceId">Device Id of virtual network device.</param>
         /// </summary>
-        public void CloseVirtualNetworkDevice()
+        public void CloseVirtualNetworkDevice(int deviceId)
         {
-            EcHL.CloseVirtualNetworkDevice();
+            EcHL.CloseVirtualNetworkDevice(deviceId);
         }
 
         /// <summary>
@@ -470,10 +471,11 @@ namespace EtherCAT.NET
         /// are then forwarded to slave device wrapped in EoE datagrams.
         /// </summary>
         /// <param name="slaveIndex">Slave index.</param>
+        /// <param name="deviceId">Device Id of virtual network device.</param>
         /// <returns>True if operation was successful, false otherwise.</returns>
-        public bool SendEthernetFramesToSlave(int slaveIndex)
+        public bool SendEthernetFramesToSlave(int slaveIndex, int deviceId)
         {
-            return EcHL.SendEthernetFramesToSlave(this.Context, (ushort)slaveIndex);
+            return EcHL.SendEthernetFramesToSlave(this.Context, (ushort)slaveIndex, deviceId);
         }
 
         /// <summary>
@@ -481,10 +483,11 @@ namespace EtherCAT.NET
         /// from EoE datagrams and forewarded to virtual network device.
         /// </summary>
         /// <param name="slaveIndex">Slave index.</param>
+        /// <param name="deviceId">Device Id of virtual network device.</param>
         /// <returns>True if operation was successful, false otherwise.</returns>
-        public bool ReadEthernetFramesFromSlave(int slaveIndex)
+        public bool ReadEthernetFramesFromSlave(int slaveIndex, int deviceId)
         {
-            return EcHL.ReadEthernetFramesFromSlave(this.Context, (ushort)slaveIndex);
+            return EcHL.ReadEthernetFramesFromSlave(this.Context, (ushort)slaveIndex, deviceId);
         }
 
 

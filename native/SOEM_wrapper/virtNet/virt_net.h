@@ -8,13 +8,13 @@
 extern "C" {
 #endif
 
-bool create_virtual_network_device(char* interfaceName, char* interfaceSet);
+int create_virtual_network_device(char* interfaceName, char* interfaceSet);
 
-void close_virtual_network_device();
+void close_virtual_network_device(int deviceId);
 
-long read_virtual_network_device(void* buffer, size_t bufferSize);
+long read_virtual_network_device(void* buffer, size_t bufferSize, int deviceId);
 
-long write_virtual_network_device(void* buffer, size_t bufferSize);
+long write_virtual_network_device(void* buffer, size_t bufferSize, int deviceId);
 
 #ifdef __cplusplus
 }

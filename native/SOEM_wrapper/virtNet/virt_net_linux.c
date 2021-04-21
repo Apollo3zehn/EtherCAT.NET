@@ -33,7 +33,6 @@
 #include <stdio.h>
 #include "virt_net.h"
 
-int fd = -1;
 
 /*
  *  Create virtual TAP network device.
@@ -44,11 +43,12 @@ int fd = -1;
  *
  *  returns: True if operation was successful, false otherwise.
  */
-bool create_virtual_network_device(char *interfaceName, char* interfaceSet)
+int create_virtual_network_device(char *interfaceName, char* interfaceSet)
 {
+    int fd = -1;
     char* clonedev = "/dev/net/tun";
     if( (fd = open(clonedev, O_RDWR | O_NONBLOCK )) < 0 ) 
-        return false;
+        return -1;
     
     struct ifreq ifr;
     memset(&ifr, 0, sizeof(ifr));
@@ -61,22 +61,22 @@ bool create_virtual_network_device(char *interfaceName, char* interfaceSet)
     if( (err = ioctl(fd, TUNSETIFF, (void*)&ifr)) < 0 )
     {
         close(fd);
-        return false;
+        return -1;
     }
 
     if(interfaceSet != NULL)
         strcpy(interfaceSet, ifr.ifr_name);
 
-    return true;
+    return fd;
 }
 /*
  *  Close virtual TAP network device.
+ *  deviceId: Virtual network device Id.
  *
  */
-void close_virtual_network_device()
+void close_virtual_network_device(int deviceId)
 {
-    if(fd != -1)
-        close(fd);
+    close(deviceId);
 }
 
 /*
@@ -84,15 +84,13 @@ void close_virtual_network_device()
  *
  *  buffer: Buffer of read data.
  *  bufferSize: Buffer size of buffer.
+ *  deviceId: Virtual network device Id.
  *
  *  returns: Number of bytes read, -1 if error occurred.
  */
-long read_virtual_network_device(void* buffer, size_t bufferSize)
+long read_virtual_network_device(void* buffer, size_t bufferSize, int deviceId)
 {
-    if(fd != -1)
-        return read(fd, buffer, bufferSize);
-    else
-        return -1;
+    return read(deviceId, buffer, bufferSize);
 }
 
 /*
@@ -100,14 +98,12 @@ long read_virtual_network_device(void* buffer, size_t bufferSize)
  *
  *  buffer: Buffer of data to write.
  *  bufferSize: Buffer size of buffer.
+ *  deviceId: Virtual network device Id.
  *
  *  returns: Number of bytes written, -1 if error occurred.
  */
 
-long write_virtual_network_device(void* buffer, size_t bufferSize)
+long write_virtual_network_device(void* buffer, size_t bufferSize, int deviceId)
 {
-    if(fd != -1)
-        return write(fd, buffer, bufferSize);
-    else
-        return -1;
+    return write(deviceId, buffer, bufferSize);
 }

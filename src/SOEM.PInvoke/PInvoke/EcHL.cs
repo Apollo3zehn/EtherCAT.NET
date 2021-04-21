@@ -172,19 +172,19 @@ namespace SOEM.PInvoke
 
         [SuppressUnmanagedCodeSecurity]
         [DllImport(EcShared.NATIVE_DLL_NAME)]
-        public static extern bool CreateVirtualNetworkDevice(IntPtr context, string interfaceName);
+        public static extern int CreateVirtualNetworkDevice(IntPtr context, string interfaceName);
 
         [SuppressUnmanagedCodeSecurity]
         [DllImport(EcShared.NATIVE_DLL_NAME)]
-        public static extern void CloseVirtualNetworkDevice();
+        public static extern void CloseVirtualNetworkDevice(int deviceId);
 
         [SuppressUnmanagedCodeSecurity]
         [DllImport(EcShared.NATIVE_DLL_NAME)]
-        public static extern bool SendEthernetFramesToSlave(IntPtr context, int slave);
+        public static extern bool SendEthernetFramesToSlave(IntPtr context, int slave, int deviceId);
 
         [SuppressUnmanagedCodeSecurity]
         [DllImport(EcShared.NATIVE_DLL_NAME)]
-        public static extern bool ReadEthernetFramesFromSlave(IntPtr context, int slave);
+        public static extern bool ReadEthernetFramesFromSlave(IntPtr context, int slave, int deviceId);
         
 
 
