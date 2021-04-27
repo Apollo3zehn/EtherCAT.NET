@@ -452,9 +452,12 @@ namespace EtherCAT.NET
         /// </summary>
         /// <param name="interfaceName">Virtual device interface name.</param>
         /// <returns>Device Id of virtual network device.</returns>
-        public int CreateVirtualNetworkDevice(string interfaceName)
+        public int CreateVirtualNetworkDevice(string interfaceName, out string interfaceNameSet)
         {
-            return EcHL.CreateVirtualNetworkDevice(this.Context, interfaceName);
+            int deviceId = 0;
+            IntPtr ptrInterfaceNameSet = EcHL.CreateVirtualNetworkDevice(interfaceName, out deviceId);
+            interfaceNameSet = Marshal.PtrToStringAnsi(ptrInterfaceNameSet);
+            return deviceId;
         }
 
         /// <summary>
@@ -475,19 +478,107 @@ namespace EtherCAT.NET
         /// <returns>True if operation was successful, false otherwise.</returns>
         public bool SendEthernetFramesToSlave(int slaveIndex, int deviceId)
         {
-            return EcHL.SendEthernetFramesToSlave(this.Context, (ushort)slaveIndex, deviceId);
+            return EcHL.SendEthernetFramesToSlave(this.Context, slaveIndex, deviceId);
         }
 
         /// <summary>
         /// Read ethernet data from slave device. Ethernet frames are extracted
-        /// from EoE datagrams and forewarded to virtual network device.
+        /// from EoE datagrams and forwarded to virtual network device.
         /// </summary>
         /// <param name="slaveIndex">Slave index.</param>
         /// <param name="deviceId">Device Id of virtual network device.</param>
         /// <returns>True if operation was successful, false otherwise.</returns>
         public bool ReadEthernetFramesFromSlave(int slaveIndex, int deviceId)
         {
-            return EcHL.ReadEthernetFramesFromSlave(this.Context, (ushort)slaveIndex, deviceId);
+            return EcHL.ReadEthernetFramesFromSlave(this.Context, slaveIndex, deviceId);
+        }
+
+
+
+        /// <summary>
+        /// Create virtual serial port.
+        /// </summary>
+        /// <param name="slaveTerminalName">Name of virtual serial port.</param>
+        /// <returns>Device Id of virtual serial port.</returns>
+        public int CreateVirtualSerialPort(out string slaveTerminalName)
+        {
+            int deviceId = 0;
+            IntPtr ptrSlaveTerminalName = EcHL.CreateVirtualSerialPort(out deviceId);
+            slaveTerminalName = Marshal.PtrToStringAnsi(ptrSlaveTerminalName);
+            return deviceId;
+        }
+
+        /// <summary>
+        /// Close virtual serial port.
+        /// </summary>
+        /// <param name="deviceId">Device Id of virtual serial port.</param>
+        public void CloseVirtualSerialPort(int deviceId)
+        {
+            EcHL.CloseVirtualSerialPort(deviceId);
+        }
+
+        /// <summary>
+        /// Read data from virtual serial port and forward it to slave.
+        /// </summary>
+        /// <param name="slaveIndex">The index of the corresponding slave.</param>
+        /// <param name="deviceId">Device Id of virtual serial port.</param>
+        /// <returns>True if any data was forwarded, false otherwise.</returns>
+        public bool SendSerialDataToSlave(int slaveIndex, int deviceId)
+        {
+            return EcHL.SendSerialDataToSlave(slaveIndex, deviceId);
+        }
+
+        /// <summary>
+        /// Read data from slave and forward it to virtual serial port.
+        /// </summary>
+        /// <param name="slaveIndex">The index of the corresponding slave.</param>
+        /// <param name="deviceId">Device Id of virtual serial port.</param>
+        /// <returns>True if any data was forwarded, false otherwise.</returns>
+        public bool ReadSerialDataFromSlave(int slaveIndex, int deviceId)
+        {
+            return EcHL.ReadSerialDataFromSlave(slaveIndex, deviceId);
+        }
+
+
+        /// <summary>
+        /// Initialize serial handshake processing for slave device.
+        /// </summary>
+        /// <param name="slaveIndex">The index of the corresponding slave.</param>
+        /// <returns>True if initialization was successful, false otherwise.</returns>
+        public bool InitSerial(int slaveIndex)
+        {
+            return EcHL.InitSerial(slaveIndex);
+        }
+
+        /// <summary>
+        /// Close serial handshake processing for slave device.
+        /// </summary>
+        /// <param name="slaveIndex">The index of the corresponding slave.</param>
+        /// <returns>True if close was successful, false otherwise.</returns>
+        public bool CloseSerial(int slaveIndex)
+        {
+            return EcHL.CloseSerial(slaveIndex);
+        }
+
+        /// <summary>
+        /// Set tx buffer transmit to slave device.
+        /// </summary>
+        /// <param name="slaveIndex">The index of the corresponding slave.</param>
+        /// <param name="buffer">Tx buffer.</param>
+        /// <param name="dataSize">Size of tx buffer.</param>
+        /// <returns>True if buffer was set successfully, false otherwise.</returns>
+        public bool SetTxBuffer(int slaveIndex, IntPtr buffer, int dataSize)
+        {
+            return EcHL.SetTxBuffer((UInt16)slaveIndex, buffer, dataSize);
+        }
+
+        /// <summary>
+        /// Update serial handshake processing for slave device.
+        /// </summary>
+        /// <param name="slaveIndex">The index of the corresponding slave.</param>
+        public void UpdateSerialIo(int slaveIndex)
+        {
+            EcHL.UpdateSerialIo(this.Context, slaveIndex);
         }
 
 

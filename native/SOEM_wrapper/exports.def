@@ -25,6 +25,15 @@ EXPORTS
     CloseVirtualNetworkDevice
     SendEthernetFramesToSlave
     ReadEthernetFramesFromSlave
+    CreateVirtualSerialPort
+    CloseVirtualSerialPort
+    SendSerialDataToSlave
+    ReadSerialDataFromSlave
+    InitSerial
+    CloseSerial
+    RegisterSerialRxCallback
+    SetTxBuffer
+    UpdateSerialIo
     RequestCommonState
     ScanDevices
     SdoWrite

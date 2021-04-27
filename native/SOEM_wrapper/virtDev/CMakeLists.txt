@@ -1,16 +1,16 @@
 cmake_minimum_required(VERSION 2.8.4)
-project(virtNet C)
+project(virtDev C)
 
 if(WIN32)
-    # Add virtual network device implementation
+    # Add virtual device implementation
     # for win32 and remove stub.
     set(SOURCE_FILES stub.c)
 elseif(UNIX AND NOT APPLE)
-    set(SOURCE_FILES virt_net_linux.c)
+    set(SOURCE_FILES virt_dev_linux.c)
 elseif(APPLE)
-    # Add virtual network device implementation 
+    # Add virtual device implementation 
     # for macOS and remove stub.
     set(SOURCE_FILES stub.c)
 endif()
 
-add_library(virt_net STATIC ${SOURCE_FILES})
+add_library(virt_dev STATIC ${SOURCE_FILES})

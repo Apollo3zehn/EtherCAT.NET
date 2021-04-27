@@ -1,4 +1,4 @@
-add_subdirectory(virtNet)
+add_subdirectory(virtDev)
 
 if(WIN32)
   set(OS "win32")
@@ -33,4 +33,4 @@ target_include_directories(soem_wrapper PRIVATE ${CMAKE_SOURCE_DIR}/SOEM/osal)
 target_include_directories(soem_wrapper PRIVATE ${CMAKE_SOURCE_DIR}/SOEM/osal/${OS})
 target_include_directories(soem_wrapper PRIVATE ${CMAKE_SOURCE_DIR}/SOEM/oshw/${OS})
 
-target_link_libraries(soem_wrapper PRIVATE soem virt_net)
+target_link_libraries(soem_wrapper PRIVATE soem virt_dev)
