@@ -10,7 +10,7 @@
 
 #ifndef PACKED
 
-#if defined(LINUX) || defined(__ARMEL__) || defined(__APPLE__) 
+#if defined(__GNUC__) || defined(__ARMEL__) || defined(__APPLE__) 
 #define PACKED_BEGIN
 #define PACKED   __attribute__((__packed__))
 #define PACKED_END
