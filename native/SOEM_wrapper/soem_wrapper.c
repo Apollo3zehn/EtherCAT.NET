@@ -808,7 +808,7 @@ bool CALLCONV CloseSerial(int slave)
  */
 void CALLCONV RegisterSerialRxCallback(uint16 slave, void CALLCONV callback(uint16 slave, uint8_t* buffer, int datasize))
 {
-    register_rx_callback(slave, callback);
+    register_rx_callback(slave, (void (*)(uint16_t slave, uint8_t* buffer, int datasize))callback);
 }
 
 /*
