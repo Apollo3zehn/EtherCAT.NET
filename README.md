@@ -3,9 +3,7 @@
 [![AppVeyor](https://ci.appveyor.com/api/projects/status/github/apollo3zehn/ethercat.net?svg=true&branch=master)](https://ci.appveyor.com/project/Apollo3zehn/ethercat-net)
 [![NuGet](https://img.shields.io/nuget/vpre/ethercat.net.svg)](https://www.nuget.org/packages/EtherCAT.NET)
 
-A large amount of the logic of EtherCAT.NET comes from the data acquisition software [OneDAS](https://github.com/OneDAS-Group/OneDAS-Core), where the master has been extensively tested on many slaves from Beckhoff, Gantner and Anybus. Due to the effort to reduce protocol specific logic within OneDAS and to allow standalone use of the EtherCAT master, EtherCAT.NET was born. 
-
-EtherCAT.NET itself provides high-level abstraction of the underlying native *Simple Open Source EtherCAT Master* ([SOEM](https://github.com/OpenEtherCATsociety/soem)). To accomplish this, the solution contains another project: SOEM.PInvoke. It comprises the actual native libraries for Windows and Linux and allows to simply P/Invoke into the native SOEM methods. The intention is to provide a managed way to access the native SOEM master. EtherCAT.NET depends on SOEM.PInvoke and adds classes for high-level abstraction.
+EtherCAT.NET provides high-level abstraction of the underlying native *Simple Open Source EtherCAT Master* ([SOEM](https://github.com/OpenEtherCATsociety/soem)). To accomplish this, the solution contains another project: SOEM.PInvoke. It comprises the actual native libraries for Windows and Linux and allows to simply P/Invoke into the native SOEM methods. The intention is to provide a managed way to access the native SOEM master. EtherCAT.NET depends on SOEM.PInvoke and adds classes for high-level abstraction.
 
 In its current state, many, but not all planned features are implemented. Thus, only an alpha version is available ([NuGet](https://www.nuget.org/packages/EtherCAT.NET)) up to now. This mainly means that any EtherCAT network can be configured and started, but high-level features like simple configuration of the SDOs are not yet implemented. 
 

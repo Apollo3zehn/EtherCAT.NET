@@ -1,3 +1,5 @@
+add_subdirectory(virtDev)
+
 if(WIN32)
   set(OS "win32")
 
@@ -6,9 +8,11 @@ if(WIN32)
   elseif(CMAKE_SIZEOF_VOID_P EQUAL 4)
     link_directories(${CMAKE_SOURCE_DIR}/SOEM/oshw/win32/wpcap/Lib)
   endif()
-elseif(UNIX)
+elseif(UNIX AND NOT APPLE)
   set(OS "linux")
   set(OS_LIBS pthread rt)
+elseif(APPLE)
+  set(OS "macosx")
 endif()
 
 file(GLOB SOEM_WRAPPER_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/*.c)
@@ -29,4 +33,4 @@ target_include_directories(soem_wrapper PRIVATE ${CMAKE_SOURCE_DIR}/SOEM/osal)
 target_include_directories(soem_wrapper PRIVATE ${CMAKE_SOURCE_DIR}/SOEM/osal/${OS})
 target_include_directories(soem_wrapper PRIVATE ${CMAKE_SOURCE_DIR}/SOEM/oshw/${OS})
 
-target_link_libraries(soem_wrapper PRIVATE soem)
+target_link_libraries(soem_wrapper PRIVATE soem virt_dev)

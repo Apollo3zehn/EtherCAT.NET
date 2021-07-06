@@ -279,7 +279,12 @@ namespace EtherCAT.NET
 
         public static SlaveInfo ScanDevices(string interfaceName, SlaveInfo referenceRootSlave = null)
         {
-            if (NetworkInterface.GetAllNetworkInterfaces().Where(x => x.Name == interfaceName).FirstOrDefault()?.OperationalStatus != OperationalStatus.Up)
+            var nic = NetworkInterface.GetAllNetworkInterfaces().Where(x => x.Name == interfaceName).FirstOrDefault();
+
+            if (nic is null)
+                throw new Exception($"The network interface '{interfaceName}' could not be found.");
+
+            if (nic.OperationalStatus != OperationalStatus.Up)
                 throw new Exception($"The network interface '{interfaceName}' is not linked. Aborting action.");
 
             var context = EcHL.CreateContext();
