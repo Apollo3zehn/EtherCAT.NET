@@ -19,7 +19,7 @@ namespace SampleMaster
         static async Task Main(string[] args)
         {          
             /* Set interface name. Edit this to suit your needs. */
-            var interfaceName = "Ethernet 4";
+            var interfaceName = "eth0";
 
             /* Set ESI location. Make sure it contains ESI files! The default path is /home/{user}/.local/share/ESI */
             var localAppDataPath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
