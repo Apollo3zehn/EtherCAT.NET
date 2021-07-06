@@ -648,8 +648,8 @@ void CALLCONV CloseVirtualNetworkDevice(int deviceId)
 }
 
 /*
- *  Read data from virtual network interface and  
- *  forward ethernet frames with EoE to slave.
+ *  Read ethernet data from virtual network device and forward
+ *  it to the slave via EoE.
  *
  *  context: Current context pointer.
  *  slave: Slave number.
@@ -657,7 +657,7 @@ void CALLCONV CloseVirtualNetworkDevice(int deviceId)
  *
  *  returns: True if any data was forwarded, false otherwise.
  */
-bool CALLCONV SendEthernetFramesToSlave(ecx_contextt* context, int slave, int deviceId)
+bool CALLCONV ForwardEthernetToSlave(ecx_contextt* context, int slave, int deviceId)
 {
     long size = read_virtual_network_device(tx_buffer_net, sizeof(tx_buffer_net), deviceId);
     int wk = 0;
@@ -677,8 +677,8 @@ bool CALLCONV SendEthernetFramesToSlave(ecx_contextt* context, int slave, int de
 }
 
 /*
- *  Read EoE frames from slave device. Ethernet data is extracted
- *  and forwarded to virtual network interface.
+ *  Read ethernet data from slave via EoE and forward it to the 
+ *  virtual network device.
  *
  *  context: Current context pointer.
  *  slave: Slave number.
@@ -686,7 +686,7 @@ bool CALLCONV SendEthernetFramesToSlave(ecx_contextt* context, int slave, int de
  *
  *  returns: True if any data was received, false otherwise.
  */
-bool CALLCONV ReadEthernetFramesFromSlave(ecx_contextt* context, int slave, int deviceId)
+bool CALLCONV ForwardEthernetToTapDevice(ecx_contextt* context, int slave, int deviceId)
 {
     int size_of_rx = sizeof(rx_buffer_net);
     int wk = ecx_EOErecv(context, slave, 0, &size_of_rx, (void*)&rx_buffer_net, 0);

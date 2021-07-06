@@ -210,7 +210,7 @@ namespace SOEM.PInvoke
         /// <returns>True if any data was forwarded, false otherwise.</returns>
         [SuppressUnmanagedCodeSecurity]
         [DllImport(EcShared.NATIVE_DLL_NAME)]
-        public static extern bool SendEthernetFramesToSlave(IntPtr context, int slaveIndex, int deviceId);
+        public static extern bool ForwardEthernetToSlave(IntPtr context, int slaveIndex, int deviceId);
 
         /// <summary>
         /// Read EoE frames from slave device. Ethernet data is extracted and forwarded to virtual network interface.
@@ -220,7 +220,7 @@ namespace SOEM.PInvoke
         /// <returns>True if any data was received, false otherwise.</returns>
         [SuppressUnmanagedCodeSecurity]
         [DllImport(EcShared.NATIVE_DLL_NAME)]
-        public static extern bool ReadEthernetFramesFromSlave(IntPtr context, int slaveIndex, int deviceId);
+        public static extern bool ForwardEthernetToTapDevice(IntPtr context, int slaveIndex, int deviceId);
 
         /// <summary>
         /// Create virtual serial port.

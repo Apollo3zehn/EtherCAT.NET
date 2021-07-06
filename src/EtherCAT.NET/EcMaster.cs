@@ -1,4 +1,4 @@
-using EtherCAT.NET.Extension;
+﻿using EtherCAT.NET.Extension;
 using EtherCAT.NET.Infrastructure;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -470,30 +470,28 @@ namespace EtherCAT.NET
         }
 
         /// <summary>
-        /// Read ethernet data from virtual network interface. Ethernet frames
-        /// are then forwarded to slave device wrapped in EoE datagrams.
+        /// Read ethernet data from virtual network device and forward
+        /// it to the slave via EoE.
         /// </summary>
         /// <param name="slaveIndex">Slave index.</param>
         /// <param name="deviceId">Device Id of virtual network device.</param>
         /// <returns>True if operation was successful, false otherwise.</returns>
-        public bool SendEthernetFramesToSlave(int slaveIndex, int deviceId)
+        public bool ForwardEthernetToSlave(int slaveIndex, int deviceId)
         {
-            return EcHL.SendEthernetFramesToSlave(this.Context, slaveIndex, deviceId);
+            return EcHL.ForwardEthernetToSlave(this.Context, slaveIndex, deviceId);
         }
 
         /// <summary>
-        /// Read ethernet data from slave device. Ethernet frames are extracted
-        /// from EoE datagrams and forwarded to virtual network device.
+        /// Read ethernet data from slave via EoE and forward it to the 
+        /// virtual network device.
         /// </summary>
         /// <param name="slaveIndex">Slave index.</param>
         /// <param name="deviceId">Device Id of virtual network device.</param>
         /// <returns>True if operation was successful, false otherwise.</returns>
-        public bool ReadEthernetFramesFromSlave(int slaveIndex, int deviceId)
+        public bool ForwardEthernetToTapDevice(int slaveIndex, int deviceId)
         {
-            return EcHL.ReadEthernetFramesFromSlave(this.Context, slaveIndex, deviceId);
+            return EcHL.ForwardEthernetToTapDevice(this.Context, slaveIndex, deviceId);
         }
-
-
 
         /// <summary>
         /// Create virtual serial port.
@@ -538,7 +536,6 @@ namespace EtherCAT.NET
         {
             return EcHL.ReadSerialDataFromSlave(slaveIndex, deviceId);
         }
-
 
         /// <summary>
         /// Initialize serial handshake processing for slave device.
