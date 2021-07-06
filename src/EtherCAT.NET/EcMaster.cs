@@ -1,4 +1,4 @@
-﻿using EtherCAT.NET.Extension;
+using EtherCAT.NET.Extension;
 using EtherCAT.NET.Infrastructure;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -425,9 +425,9 @@ namespace EtherCAT.NET
         /// <param name="data">Data to send.</param>
         /// <param name="timeout">Timeout in us</param>
         /// <returns>True if operation was successful, false otherwise.</returns>
-        public bool SendEthernet(int slaveIndex, byte port, int size, IntPtr data, int timeout)
+        public bool SendEthernet(int slaveIndex, byte port, int size, IntPtr data, int timeout = 700000)
         {
-            int workCounter = EcEoE.ecx_EOEsend(this.Context, (ushort)slaveIndex, port, size, data, timeout = 700000);
+            int workCounter = EcEoE.ecx_EOEsend(this.Context, (ushort)slaveIndex, port, size, data, timeout);
             return workCounter > 0;
         }
 
@@ -441,9 +441,9 @@ namespace EtherCAT.NET
         /// <param name="data">Received data.</param>
         /// <param name="timeout">Timeout in us</param>
         /// <returns>True if operation was successful, false otherwise.</returns>
-        public bool ReceiveEthernet(int slaveIndex, byte port, ref int size, IntPtr data, int timeout)
+        public bool ReceiveEthernet(int slaveIndex, byte port, ref int size, IntPtr data, int timeout = 700000)
         {
-            int workCounter = EcEoE.ecx_EOErecv(this.Context, (ushort)slaveIndex, port, ref size, data, timeout = 700000);
+            int workCounter = EcEoE.ecx_EOErecv(this.Context, (ushort)slaveIndex, port, ref size, data, timeout);
             return workCounter > 0;
         }
 
