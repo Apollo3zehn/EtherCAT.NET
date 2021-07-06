@@ -34,11 +34,11 @@
   <ItemGroup Condition="'$(IsPublicBuild)' == '' AND $(IsWindows) == 'True'">
     <Content Include="./../../artifacts/bin32/SOEM_wrapper/Release/soem_wrapper.dll" Link="runtimes/win-x86/native/soem_wrapper.dll">
       <PackagePath>runtimes/win-x86/native</PackagePath>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="./../../artifacts/bin64/SOEM_wrapper/Release/soem_wrapper.dll" Link="runtimes/win-x64/native/soem_wrapper.dll">
       <PackagePath>runtimes/win-x64/native</PackagePath>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
 

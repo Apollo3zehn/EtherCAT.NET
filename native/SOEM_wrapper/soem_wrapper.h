@@ -1,6 +1,9 @@
 // Windows (32 bit)
 #if defined _WIN32
     #define CALLCONV __stdcall
+// ARM architecture 
+#elif defined __ARMEL__
+    #define CALLCONV
 // GCC
 #elif defined __GNUC__
     // (64 bit)

@@ -19,6 +19,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "soem_wrapper.h"
+#include "virtDev/virt_dev.h"
+#include "serial.h"
+
 
 #define EC_VER2
 
@@ -35,6 +38,28 @@ char fmmu_zero[sizeof(ec_fmmut)];
 
 ec_smt SM[2];
 char sm_zero[sizeof(ec_smt)];
+
+// virtual network device buffer
+uint8_t tx_buffer_net[1500];
+
+// current RX fragment number */
+uint8_t rxfragmentno = 0;
+// complete rx frame size of current frame */
+uint16_t rxframesize = 0;
+// current rx data offset in frame */
+uint16_t rxframeoffset = 0;
+// current rx frame number */
+uint16_t rxframeno = 0;
+uint8 rx_buffer_net[1500];
+
+
+// virtual terminal buffer
+uint8_t tx_buffer_term[1500];
+uint8 rx_buffer_term[1500];
+
+char tmp_char[255];
+
+
 
 
 uint16 CalculateCrc(byte* data)
@@ -131,6 +156,7 @@ ecx_contextt* CALLCONV CreateContext()
     context->DCtO = 0;
     context->DCl = 0;
     context->FOEhook = NULL;
+    context->EOEhook = NULL;
 
     context->port = (ecx_portt*)calloc(1, sizeof(ecx_portt));
     context->slavelist = (ec_slavet*)calloc(EC_MAXSLAVE, sizeof(ec_slavet));
@@ -579,7 +605,7 @@ int CALLCONV DownloadFirmware(ecx_contextt* context, int slave, char *fileName, 
         }
     }
 
-    return  (wk > 0) ? 1 : -1; 
+    return  (wk > 0) ? 1 : -1;
 }
 
 /*
@@ -592,6 +618,224 @@ int CALLCONV DownloadFirmware(ecx_contextt* context, int slave, char *fileName, 
 void CALLCONV RegisterFOECallback(ecx_contextt* context, int CALLCONV callback(uint16 slave, int packetnumber, int datasize))
 {
     context->FOEhook = (int (*)(uint16 slave, int packetnumber, int datasize))callback;	
+}
+
+/*
+ *  Create virtual network device.
+ *
+ *  interfaceName: Virtual network interface name.
+ *  deviceId [out]: Virtual network device Id != -1 if successful.
+ *
+ *  returns: Actually virtual network device name set by kernel. 
+ * 
+ */
+char* CALLCONV CreateVirtualNetworkDevice(char *interfaceName, int* deviceId)
+{
+    memset(tmp_char, 0, sizeof(tmp_char));
+     *deviceId = create_virtual_network_device(interfaceName, tmp_char);
+
+     return (char*) tmp_char;
+}
+
+/*
+ *  Close virtual network device.
+ *  deviceId: Virtual network device Id.
+ *
+ */
+void CALLCONV CloseVirtualNetworkDevice(int deviceId)
+{
+    close_virtual_network_device(deviceId);
+}
+
+/*
+ *  Read ethernet data from virtual network device and forward
+ *  it to the slave via EoE.
+ *
+ *  context: Current context pointer.
+ *  slave: Slave number.
+ *  deviceId: Virtual network device Id.
+ *
+ *  returns: True if any data was forwarded, false otherwise.
+ */
+bool CALLCONV ForwardEthernetToSlave(ecx_contextt* context, int slave, int deviceId)
+{
+    long size = read_virtual_network_device(tx_buffer_net, sizeof(tx_buffer_net), deviceId);
+    int wk = 0;
+
+    if(size > 0)
+    {
+        ec_etherheadert *bp = (ec_etherheadert *)tx_buffer_net;
+        uint16 type = (bp->etype << 8 | bp->etype >> 8);
+       
+        if (type != ETH_P_ECAT)
+        {
+            wk = ecx_EOEsend(context, slave, 0, size, (void*)tx_buffer_net, 0);
+        }
+    }
+
+    return (size > 0) && (wk > 0) ? true : false;
+}
+
+/*
+ *  Read ethernet data from slave via EoE and forward it to the 
+ *  virtual network device.
+ *
+ *  context: Current context pointer.
+ *  slave: Slave number.
+ *  deviceId: Virtual network device Id.
+ *
+ *  returns: True if any data was received, false otherwise.
+ */
+bool CALLCONV ForwardEthernetToTapDevice(ecx_contextt* context, int slave, int deviceId)
+{
+    int size_of_rx = sizeof(rx_buffer_net);
+    int wk = ecx_EOErecv(context, slave, 0, &size_of_rx, (void*)&rx_buffer_net, 0);
+    long size = 0;
+
+    if (wk > 0)
+    {
+        ec_etherheadert *bp = (ec_etherheadert *)rx_buffer_net;        
+        uint16 type = (bp->etype << 8 | bp->etype >> 8);
+
+        if(type != ETH_P_ECAT)
+        {
+            size = write_virtual_network_device(bp, size_of_rx, deviceId);
+        }
+    }
+
+    return (size > 0) && (wk > 0) ? true : false;
+}
+
+/*
+ *  Create virtual serial port.
+ *
+ *  deviceId [out]: Device Id of virtual serial port.
+ *
+ *  returns: Name of virtual serial port.
+ */
+char* CreateVirtualSerialPort(int* deviceId)
+{
+    memset(tmp_char, 0, sizeof(tmp_char));
+    *deviceId = create_virtual_serial_port(tmp_char);
+    
+    return (char*) tmp_char;
+}
+
+/*
+ *  Close virtual serial port.
+ *
+ *  deviceId: Device Id of virtual serial port.
+ *
+ */
+void CALLCONV CloseVirtualSerialPort(int deviceId)
+{
+    close_virtual_serial_port(deviceId);
+}
+
+/*
+ *  Read data from virtual serial port and forward it to slave.
+ *
+ *  slave: Slave number.
+ *  deviceId: Device Id of virtual serial port.
+ *
+ *  returns: True if any data was forwarded, false otherwise.
+ */
+bool CALLCONV SendSerialDataToSlave(int slave, int deviceId)
+{
+    long size = read_virtual_serial_port(tx_buffer_term, sizeof(tx_buffer_term), deviceId);
+    bool success = false;
+
+    if(size > 0)
+    {
+        success = set_tx_buffer(slave, tx_buffer_term, size);
+    }
+
+    return (size > 0) && success ? true : false;
+}
+
+/*
+ *  Read data from slave and forward it to virtual serial port.
+ *
+ *  slave: Slave number.
+ *  deviceId: Device Id of virtual terminal.
+ *
+ *  returns: True if any data was forwarded, false otherwise.
+ */
+bool CALLCONV ReadSerialDataFromSlave(int slave, int deviceId)
+{
+    int size_of_rx = sizeof(rx_buffer_term);
+    bool data_received = get_rx_buffer(slave, rx_buffer_term, &size_of_rx);
+    long size = 0;
+
+    if(data_received)
+    {
+        size = write_virtual_serial_port(rx_buffer_term, size_of_rx, deviceId);   
+    }
+
+    return (size > 0) && data_received ? true : false;
+}
+
+/*
+ *  Initialize serial handshake processing for slave device.
+ *
+ *  slave: Slave number.
+ * 
+ * returns: True if initialization was successful, false otherwise.
+ */
+bool CALLCONV InitSerial(int slave)
+{
+    return init_serial(slave);
+}
+
+/*
+ *  Close serial handshake processing for slave device.
+ *
+ *  slave: Slave number.
+ * 
+ * returns: True if close was successful, false otherwise.
+ */
+bool CALLCONV CloseSerial(int slave)
+{
+    return close_serial(slave);
+}
+
+/*
+ *  Register serial rx callback for slave device.
+ *
+ *  slave: Slave number.
+ *  callback: Callback.
+ * 
+ */
+void CALLCONV RegisterSerialRxCallback(uint16 slave, void CALLCONV callback(uint16 slave, uint8_t* buffer, int datasize))
+{
+    register_rx_callback(slave, (void (*)(uint16_t slave, uint8_t* buffer, int datasize))callback);
+}
+
+/*
+ *  Set tx buffer transmit to slave device.
+ *
+ *  slave: Slave number.
+ *  tx_buffer: Tx buffer
+ *  datasize: Size of tx buffer.
+ * 
+ * returns: True if buffer was set successfully, false otherwise.
+ */
+bool CALLCONV SetTxBuffer(uint16 slave, uint8* tx_buffer, int datasize)
+{
+    return set_tx_buffer(slave, tx_buffer, datasize);
+}
+
+/*
+ *  Update serial handshake processing for slave device.
+ *
+ *  context: Current context pointer.
+ *  slave: Slave number.
+ * 
+ * returns: True if close was successful, false otherwise.
+ */
+void CALLCONV UpdateSerialIo(ecx_contextt* context, int slave)
+{
+    update_serial(slave, context->slavelist[slave].outputs, context->slavelist[slave].inputs);
 }
 
 /*
@@ -846,6 +1090,16 @@ int CALLCONV ScanDevices(ecx_contextt* context, char* interfaceName, ec_slave_in
         do
         {
             ecx_statecheck(context, 0, EC_STATE_PRE_OP, EC_TIMEOUTSTATE);
+            
+            for (int slaveIndex = 1; slaveIndex < *context->slavecount + 1; slaveIndex++)
+            {
+                if(context->slavelist[slaveIndex].state != (EC_STATE_PRE_OP | EC_STATE_ACK))
+                {
+                    context->slavelist[slaveIndex].state = EC_STATE_PRE_OP | EC_STATE_ACK;
+                    ecx_writestate(context, slaveIndex);
+                }
+            }
+            
         } while (counter-- && (context->slavelist[0].state != (EC_STATE_PRE_OP | EC_STATE_ACK)));
 
         if (context->slavelist[0].state != (EC_STATE_PRE_OP | EC_STATE_ACK))

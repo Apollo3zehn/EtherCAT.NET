@@ -12,6 +12,9 @@ namespace SOEM.PInvoke
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         public delegate int FOECallback(UInt16 slave, int packetnumber, int datasize);
 
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        public delegate void SerialRxCallback(UInt16 slave, IntPtr buffer, int datasize);
+
 
         #region "Helper"
 
@@ -140,6 +143,8 @@ namespace SOEM.PInvoke
         /// <summary>
         /// Requests slave state.
         /// </summary>
+        /// <param name="slaveIndex">The index of the corresponding slave.</param>
+        /// <param name="state">Requested slave state.</param>
         /// <returns>Returns the current state of slave.</returns>
         [SuppressUnmanagedCodeSecurity]
         [DllImport(EcShared.NATIVE_DLL_NAME)]
@@ -149,6 +154,7 @@ namespace SOEM.PInvoke
         /// <summary>
         /// Gets current slave state.
         /// </summary>
+        /// <param name="slaveIndex">The index of the corresponding slave.</param>
         /// <returns>Returns the current state of slave.</returns>
         [SuppressUnmanagedCodeSecurity]
         [DllImport(EcShared.NATIVE_DLL_NAME)]
@@ -158,16 +164,145 @@ namespace SOEM.PInvoke
         /// <summary>
         /// Downloads firmware file to slave.
         /// </summary>
+        /// <param name="slaveIndex">The index of the corresponding slave.</param>
+        /// <param name="fileName">The file path of slave firmware.</param>
+        /// <param name="length">The file length of firmware file.</param>
         /// <returns>Returns workcounter from last slave response.</returns>
         [SuppressUnmanagedCodeSecurity]
         [DllImport(EcShared.NATIVE_DLL_NAME)] 
         public static extern int DownloadFirmware(IntPtr context, int slaveIndex, string fileName, int length);
 
 
+        /// <summary>
+        /// Register FoE callback.
+        /// </summary>
+        /// <param name="callback">The callback function.</param>
         [SuppressUnmanagedCodeSecurity]
         [DllImport(EcShared.NATIVE_DLL_NAME)]
         public static extern void RegisterFOECallback(IntPtr context, [MarshalAs(UnmanagedType.FunctionPtr)] FOECallback callback);
 
+
+
+
+        /// <summary>
+        /// Create virtual network device.
+        /// </summary>
+        /// <param name="interfaceName"> Virtual network interface name.</param>
+        /// <param name="deviceId">Virtual network device Id != -1 if successful.</param>
+        /// <returns>Actually virtual network device name set by kernel.</returns>
+        [SuppressUnmanagedCodeSecurity]
+        [DllImport(EcShared.NATIVE_DLL_NAME)]
+        public static extern IntPtr CreateVirtualNetworkDevice(string interfaceName, out int deviceId);
+
+        /// <summary>
+        ///  Close virtual network device.
+        /// </summary>
+        /// <param name="deviceId">Virtual network device Id.</param>
+        [SuppressUnmanagedCodeSecurity]
+        [DllImport(EcShared.NATIVE_DLL_NAME)]
+        public static extern void CloseVirtualNetworkDevice(int deviceId);
+
+        /// <summary>
+        /// Read data from virtual network interface and forward ethernet frames with EoE to slave.
+        /// </summary>
+        /// <param name="slaveIndex">The index of the corresponding slave.</param>
+        /// <param name="deviceId">Virtual network device Id.</param>
+        /// <returns>True if any data was forwarded, false otherwise.</returns>
+        [SuppressUnmanagedCodeSecurity]
+        [DllImport(EcShared.NATIVE_DLL_NAME)]
+        public static extern bool ForwardEthernetToSlave(IntPtr context, int slaveIndex, int deviceId);
+
+        /// <summary>
+        /// Read EoE frames from slave device. Ethernet data is extracted and forwarded to virtual network interface.
+        /// </summary>
+        /// <param name="slaveIndex">The index of the corresponding slave.</param>
+        /// <param name="deviceId">Virtual network device Id.</param>
+        /// <returns>True if any data was received, false otherwise.</returns>
+        [SuppressUnmanagedCodeSecurity]
+        [DllImport(EcShared.NATIVE_DLL_NAME)]
+        public static extern bool ForwardEthernetToTapDevice(IntPtr context, int slaveIndex, int deviceId);
+
+        /// <summary>
+        /// Create virtual serial port.
+        /// </summary>
+        /// <param name="deviceId">Device Id of virtual serial port.</param>
+        /// <returns>Name of virtual serial port.</returns>
+        [SuppressUnmanagedCodeSecurity]
+        [DllImport(EcShared.NATIVE_DLL_NAME)]
+        public static extern IntPtr CreateVirtualSerialPort(out int deviceId);
+
+        /// <summary>
+        /// Close virtual serial port.
+        /// </summary>
+        /// <param name="deviceId">Device Id of virtual serial port.</param>
+        [SuppressUnmanagedCodeSecurity]
+        [DllImport(EcShared.NATIVE_DLL_NAME)]
+        public static extern void CloseVirtualSerialPort(int deviceId);
+
+        /// <summary>
+        /// Read data from virtual serial port and forward it to slave.
+        /// </summary>
+        /// <param name="slaveIndex">The index of the corresponding slave.</param>
+        /// <param name="deviceId">Device Id of virtual serial port.</param>
+        /// <returns>True if any data was forwarded, false otherwise.</returns>
+        [SuppressUnmanagedCodeSecurity]
+        [DllImport(EcShared.NATIVE_DLL_NAME)]
+        public static extern bool SendSerialDataToSlave(int slaveIndex, int deviceId);
+
+        /// <summary>
+        /// Read data from slave and forward it to virtual serial port.
+        /// </summary>
+        /// <param name="slaveIndex">The index of the corresponding slave.</param>
+        /// <param name="deviceId">Device Id of virtual serial port.</param>
+        /// <returns>True if any data was forwarded, false otherwise.</returns>
+        [SuppressUnmanagedCodeSecurity]
+        [DllImport(EcShared.NATIVE_DLL_NAME)]
+        public static extern bool ReadSerialDataFromSlave(int slavIndex, int deviceId);
+
+        /// <summary>
+        /// Initialize serial handshake processing for slave device.
+        /// </summary>
+        /// <param name="slaveIndex">The index of the corresponding slave.</param>
+        /// <returns>True if initialization was successful, false otherwise.</returns>
+        [SuppressUnmanagedCodeSecurity]
+        [DllImport(EcShared.NATIVE_DLL_NAME)]
+        public static extern bool InitSerial(int slaveIndex);
+
+        /// <summary>
+        /// Close serial handshake processing for slave device.
+        /// </summary>
+        /// <param name="slaveIndex">The index of the corresponding slave.</param>
+        /// <returns>True if close was successful, false otherwise.</returns>
+        [SuppressUnmanagedCodeSecurity]
+        [DllImport(EcShared.NATIVE_DLL_NAME)]
+        public static extern bool CloseSerial(int slaveIndex);
+
+        /// <summary>
+        /// Register serial rx callback.
+        /// </summary>
+        /// <param name="callback">The callback function.</param>
+        [SuppressUnmanagedCodeSecurity]
+        [DllImport(EcShared.NATIVE_DLL_NAME)]
+        public static extern void RegisterSerialRxCallback(UInt16 slavIndex, [MarshalAs(UnmanagedType.FunctionPtr)] SerialRxCallback callback);
+
+        /// <summary>
+        /// Set tx buffer transmit to slave device.
+        /// </summary>
+        /// <param name="slaveIndex">The index of the corresponding slave.</param>
+        /// <param name="buffer">Tx buffer.</param>
+        /// <param name="dataSize">Size of tx buffer.</param>
+        /// <returns>True if buffer was set successfully, false otherwise.</returns>
+        [SuppressUnmanagedCodeSecurity]
+        [DllImport(EcShared.NATIVE_DLL_NAME)]
+        public static extern bool SetTxBuffer(UInt16 slaveIndex, IntPtr buffer, int dataSize);
+
+        /// <summary>
+        /// Update serial handshake processing for slave device.
+        /// </summary>
+        /// <param name="slaveIndex">The index of the corresponding slave.</param>
+        [SuppressUnmanagedCodeSecurity]
+        [DllImport(EcShared.NATIVE_DLL_NAME)]
+        public static extern void UpdateSerialIo(IntPtr context, int slaveIndex);
 
         /// <summary>
         /// Request specific state for all slaves.
@@ -176,7 +311,6 @@ namespace SOEM.PInvoke
         [SuppressUnmanagedCodeSecurity]
         [DllImport(EcShared.NATIVE_DLL_NAME)]
         public static extern int RequestCommonState(IntPtr context, UInt16 state);
-
 
         [SuppressUnmanagedCodeSecurity]
         [DllImport(EcShared.NATIVE_DLL_NAME)]
