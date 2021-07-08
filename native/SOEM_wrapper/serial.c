@@ -108,9 +108,10 @@ static void state_init_enter(struct sm_state_data_t* data);
 static void state_init_run(struct sm_state_data_t* data);
 static void state_idle_run(struct sm_state_data_t* data);
 static void state_receive_run(struct sm_state_data_t* data);
+static void state_receive_accepted(struct sm_state_data_t* data);
 static void state_transmit_run(struct sm_state_data_t* data);
 static void state_wait_transmit_accepted(struct sm_state_data_t* data);
-static void check_requests(struct sm_state_data_t* data);
+static void check_receive_request(struct sm_state_data_t* data);
 
 // Static data containers
 static int _mapping_index[MAX_SLAVES] = { 0 };
@@ -186,7 +187,7 @@ static void init_state_data(struct sm_state_data_t* state)
     state->rx_offset = 0;
     state->rx_updated = false;
     state->next_state = NULL;
-    state->current_state = &state_init_enter;
+    state->current_state = NULL;
     state->initialized = false;
     state->receive_request_bit = 0;
     state->transmit_accepted_bit = 0;
@@ -208,6 +209,7 @@ bool init_serial(uint16_t slave)
         return false;
     
     init_state_data(state);
+    state->current_state = &state_init_enter;
 
     if(state->tx_cache == NULL)
         state->tx_cache = (uint8_t*)malloc(TX_CACHE_SIZE);
@@ -345,8 +347,12 @@ void update_serial(uint16_t slave, uint8_t* tx_data, uint8_t* rx_data)
         state->rx_status = (rx_status_t *)rx_data;
         state->rx_buffer = rx_data + sizeof(uint16_t);
 
-        state->current_state(state);
-        state->current_state = state->next_state;
+        if(state->current_state != NULL)
+        {
+            check_receive_request(state);
+            state->current_state(state);
+            state->current_state = state->next_state;
+        }
     }
 }
 
@@ -355,14 +361,17 @@ void update_serial(uint16_t slave, uint8_t* tx_data, uint8_t* rx_data)
  *
  *  data: Pointer to sm_state_data_t struct.
  */
-static void check_requests(struct sm_state_data_t* data)
+static void check_receive_request(struct sm_state_data_t* data)
 {
-    uint8_t current_receive_request = data->rx_status->receive_request;
-
-    if (current_receive_request != data->receive_request_bit)
+    if(data->initialized)
     {
-        data->receive_request_bit = current_receive_request;
-        data->receive_request = true;
+        const uint8_t current_receive_request = data->rx_status->receive_request;
+
+        if (current_receive_request != data->receive_request_bit)
+        {
+            data->receive_request_bit = current_receive_request;
+            data->receive_request = true;
+        }
     }
 }
 
@@ -397,14 +406,9 @@ static void state_init_run(struct sm_state_data_t* data)
     }
     else if ((data->tx_control->init_request == 0) && (data->rx_status->init_accepted == 0))
     {
+        data->receive_request_bit = data->rx_status->receive_request;
         data->initialized = true;
         data->next_state = &state_idle_run;
-
-        if (data->tx_control->receive_accepted != data->rx_status->receive_request)
-        {
-            data->tx_control->receive_accepted = data->rx_status->receive_request;
-            data->receive_request_bit = data->rx_status->receive_request;
-        }
     }
 }
 
@@ -415,8 +419,6 @@ static void state_init_run(struct sm_state_data_t* data)
  */
 static void state_idle_run(struct sm_state_data_t* data)
 {
-    check_requests(data);
-
     // check if receive request occurred
     if (data->receive_request)
     {
@@ -444,21 +446,31 @@ static void state_receive_run(struct sm_state_data_t* data)
     {
         data->rx_offset = 0;
     }
-    
+
     // receive data
     memcpy(data->rx_cache + data->rx_offset, data->rx_buffer, length);
     data->rx_offset += length;
-    
+
     if(data->rx_callback != NULL)
     {
         data->rx_callback(data->slave, data->rx_buffer, length);
     }
+    
+    data->next_state = &state_receive_accepted;
+}
 
+/*
+ *  Receive accepted state function.
+ *
+ *  data: Pointer to sm_state_data_t struct.
+ */
+static void state_receive_accepted(struct sm_state_data_t* data)
+{
+    data->rx_updated = true;
+    data->receive_request = false;
     // toggle accepted bit
     data->tx_control->receive_accepted = !data->tx_control->receive_accepted;
 
-    data->rx_updated = true;
-    data->receive_request = false;
     data->next_state = &state_idle_run;
 }
 
