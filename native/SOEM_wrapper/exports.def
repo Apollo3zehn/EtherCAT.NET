@@ -23,8 +23,8 @@ EXPORTS
     RegisterFOECallback
     CreateVirtualNetworkDevice
     CloseVirtualNetworkDevice
-    SendEthernetFramesToSlave
-    ReadEthernetFramesFromSlave
+    ForwardEthernetToSlave
+    ForwardEthernetToTapDevice
     CreateVirtualSerialPort
     CloseVirtualSerialPort
     SendSerialDataToSlave
