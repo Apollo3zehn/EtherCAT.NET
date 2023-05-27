@@ -1,7 +1,7 @@
-﻿using EtherCAT.NET.Infrastructure;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using EtherCAT.NET.Infrastructure;
 
 namespace EtherCAT.NET.Extension
 {
@@ -9,7 +9,7 @@ namespace EtherCAT.NET.Extension
     {
         #region Fields
 
-        SlaveInfo _slaveInfo;
+        private SlaveInfo _slaveInfo;
 
         #endregion
 
@@ -34,17 +34,27 @@ namespace EtherCAT.NET.Extension
         public override void EvaluateSettings()
         {
             var dcOpMode = _slaveInfo.Esi.Dc.OpMode.Where(x => x.Name == SelectedOpModeId).First();
-            var syncManagerPdosSet = dcOpMode.Sm ?? new DeviceTypeDCOpModeSM[] { };
+            var opModeSyncManagers = dcOpMode.Sm ?? new DeviceTypeDCOpModeSM[] { };
 
-            if (syncManagerPdosSet.Count() > 0)
+            if (opModeSyncManagers.Any())
             {
-                _slaveInfo.DynamicData.Pdos.ToList().ForEach(x => x.SyncManager = -1);
+                var resetSyncManagers = opModeSyncManagers
+                    .Any(x => x.Pdo is not null);
 
-                foreach (var syncManagerPdos in syncManagerPdosSet)
+                if (resetSyncManagers)
                 {
-                    int syncManager = syncManagerPdos.No;
+                    foreach (var pdo in _slaveInfo.DynamicData.Pdos)
+                    {
+                        pdo.SyncManager = -1;
+                    }
+                }
 
-                    foreach (var smPdo in syncManagerPdos.Pdo)
+                foreach (var opModeSyncManager in opModeSyncManagers
+                    .Where(current => current.Pdo is not null))
+                {
+                    int syncManager = opModeSyncManager.No;
+
+                    foreach (var smPdo in opModeSyncManager.Pdo)
                     {
                         var index = (ushort)EsiUtilities.ParseHexDecString(smPdo.Value);
                         var currentOsFactor = (ushort)(smPdo.OSFacSpecified ? smPdo.OSFac : 1);
