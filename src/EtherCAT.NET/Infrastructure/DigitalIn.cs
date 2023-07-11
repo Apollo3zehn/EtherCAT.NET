@@ -42,9 +42,10 @@ namespace EtherCAT.NET.Infrastructure
                 // get slave variable in order to set bit offset
                 SlaveVariable slaveVariable = _slavePdos[channel - 1].Variables.First();
                 int bitOffset = slaveVariable.BitOffset;
+                int* memptr = ((int*)slaveVariable.DataPtr);
 
-                int channelInput = _memoryMapping[0] & (1 << bitOffset);
-                channelSet = BitConverter.ToBoolean(channelInput.ToByteArray(), 0);
+                int channelInput = memptr[0] & (1 << bitOffset);
+                channelSet = BitConverter.ToBoolean(channelInput.ToByteArray(), (int)(bitOffset / 8));
             }
 
             return channelSet;
