@@ -27,7 +27,7 @@ install:
     if ($isLinux) 
     { 
       sudo apt-get update
-      sudo apt-get --yes install g++-multilib
+      sudo apt-get --yes install g++-9-multilib
     }
 
 before_build:
