@@ -13,7 +13,7 @@
     <Major Condition="$(Major) == ''">1</Major>
     <Minor Condition="$(Minor) == ''">0</Minor>
     <Revision Condition="$(Revision) == ''">0</Revision>
-    <VersionSuffix Condition="$(VersionSuffix) == ''">alpha.9</VersionSuffix>
+    <VersionSuffix Condition="$(VersionSuffix) == ''">alpha.10</VersionSuffix>
   </PropertyGroup>
 
   <PropertyGroup>
