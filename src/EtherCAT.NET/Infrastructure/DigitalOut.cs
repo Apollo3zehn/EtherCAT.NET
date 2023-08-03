@@ -1,5 +1,4 @@
-﻿using System;
-using System.Linq;
+﻿using System.Linq;
 
 namespace EtherCAT.NET.Infrastructure
 {
@@ -8,9 +7,14 @@ namespace EtherCAT.NET.Infrastructure
     /// EC slave that has digital outputs. 
     /// </summary>
     public unsafe class DigitalOut : DigitalIn
-    {       
+    {
+        /// <summary>
+        /// Initializes a new instance of the <see cref="DigitalOut"/> class.
+        /// </summary>
+        /// <param name="slave">The digital output slave.</param>
         public DigitalOut(SlaveInfo slave) : base(slave)
         {
+            //
         }
 
         /// <summary>
@@ -21,19 +25,22 @@ namespace EtherCAT.NET.Infrastructure
         /// <returns></returns>
         public bool SetChannel(int channel, bool value)
         {
-            bool validChannel = ValidateChannel(channel);
+            var validChannel = ValidateChannel(channel);
+
             if (validChannel)
             {
                 // get slave variable in order to set bit offset
-                SlaveVariable slaveVariable = _slavePdos[channel - 1].Variables.First();
-                int bitOffset = slaveVariable.BitOffset;
+                var slaveVariable = _slavePdos[channel - 1].Variables.First();
+                var bitOffset = slaveVariable.BitOffset;
+                var memptr = (int*)slaveVariable.DataPtr;
 
                 if (value)
                     // set channel bit
-                    _memoryMapping[0] |= 1 << bitOffset;
+                    memptr[0] |= 1 << bitOffset;
+
                 else
                     // clear channel bit
-                    _memoryMapping[0] &= ~(1 << bitOffset);  
+                    memptr[0] &= ~(1 << bitOffset);  
             }
 
             return validChannel;
@@ -46,12 +53,15 @@ namespace EtherCAT.NET.Infrastructure
         /// <returns></returns>
         public bool ToggleChannel(int channel)
         {
-            bool validChannel = ValidateChannel(channel);
+            var validChannel = ValidateChannel(channel);
+
             if (validChannel)
             {
                 // get slave variable in order to set bit offset
-                SlaveVariable slaveVariable = _slavePdos[channel - 1].Variables.First();
-                _memoryMapping[0] ^= 1 << slaveVariable.BitOffset;
+                var slaveVariable = _slavePdos[channel - 1].Variables.First();
+                var memptr = (int*)slaveVariable.DataPtr;
+
+                memptr[0] ^= 1 << slaveVariable.BitOffset;
             }
 
             return validChannel;
