@@ -12,8 +12,11 @@ namespace EtherCAT.NET.Infrastructure
     {
         protected IList<SlavePdo> _slavePdos;
         protected int _nofSlavePdos;
-        protected int* _memoryMapping = null;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="DigitalIn"/> class.
+        /// </summary>
+        /// <param name="slave">The digital input slave.</param>
         public DigitalIn(SlaveInfo slave)
         {
             _slavePdos = slave.DynamicData.Pdos;
@@ -21,11 +24,6 @@ namespace EtherCAT.NET.Infrastructure
 
             if (_nofSlavePdos == 0)
                 throw new Exception($"No slave PDOs present.");
-
-            var channel1Pdo = _slavePdos[0];
-            var variableCh1 = channel1Pdo.Variables.First();
-            // get memory address of outputs
-            _memoryMapping = (int*)variableCh1.DataPtr.ToPointer();
         }
 
         /// <summary>
@@ -35,19 +33,20 @@ namespace EtherCAT.NET.Infrastructure
         /// <returns>Channel state, true: High, false: Low./returns>
         public bool GetChannel(int channel)
         {
-            bool channelSet = false;
+            var isChannelSet = false;
 
             if (ValidateChannel(channel))
             {
                 // get slave variable in order to set bit offset
-                SlaveVariable slaveVariable = _slavePdos[channel - 1].Variables.First();
-                int bitOffset = slaveVariable.BitOffset;
+                var slaveVariable = _slavePdos[channel - 1].Variables.First();
+                var bitOffset = slaveVariable.BitOffset;
+                var memptr = (int*)slaveVariable.DataPtr;
+                var channelInput = memptr[0] & (1 << bitOffset);
 
-                int channelInput = _memoryMapping[0] & (1 << bitOffset);
-                channelSet = BitConverter.ToBoolean(channelInput.ToByteArray(), 0);
+                isChannelSet = BitConverter.ToBoolean(channelInput.ToByteArray(), bitOffset / 8);
             }
 
-            return channelSet;
+            return isChannelSet;
         }
 
         /// <summary>
@@ -58,9 +57,7 @@ namespace EtherCAT.NET.Infrastructure
         protected bool ValidateChannel(int channel)
         {
             if (channel <= 0 || channel > _nofSlavePdos)
-            {
                 return false;
-            }
 
             return true;
         }

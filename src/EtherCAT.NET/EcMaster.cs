@@ -160,17 +160,12 @@ namespace EtherCAT.NET
 
             foreach (DataDirection dataDirection in Enum.GetValues(typeof(DataDirection)))
             {
-                switch (dataDirection)
+                slavePdoOffsets = dataDirection switch
                 {
-                    case DataDirection.Output:
-                        slavePdoOffsets = slaveRxPdoOffsets;
-                        break;
-                    case DataDirection.Input:
-                        slavePdoOffsets = slaveTxPdoOffsets;
-                        break;
-                    default:
-                        throw new NotImplementedException();
-                }
+                    DataDirection.Output => slaveRxPdoOffsets,
+                    DataDirection.Input => slaveTxPdoOffsets,
+                    _ => throw new NotImplementedException(),
+                };
 
                 foreach (var slave in slaves)
                 {
@@ -182,7 +177,10 @@ namespace EtherCAT.NET
 
                     ioMapByteOffset = slaveByteOffset;
                     
-                    foreach (var variable in slave.DynamicData.Pdos.Where(x => x.SyncManager >= 0).ToList().SelectMany(x => x.Variables).ToList().Where(x => x.DataDirection == dataDirection))
+                    foreach (var variable in slave.DynamicData.Pdos
+                        .Where(pdo => pdo.SyncManager >= 0)
+                        .SelectMany(pdo => pdo.Variables)
+                        .Where(variable => variable.DataDirection == dataDirection))
                     {
                         variable.DataPtr = IntPtr.Add(_ioMapPtr, ioMapByteOffset);
                         variable.BitOffset = ioMapBitOffset;
