@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using System;
+using System.Linq;
 
 namespace EtherCAT.NET.Infrastructure
 {
@@ -16,6 +17,41 @@ namespace EtherCAT.NET.Infrastructure
         {
             //
         }
+        
+        /// <summary>
+        /// Gets the Index of Matching Slave Variable Channel.
+        /// </summary>
+        /// <param name="channel"></param>
+        /// <returns></returns>
+        /// <exception cref="ArgumentOutOfRangeException"></exception>
+        private (SlaveVariable variable, int bitOffset, IntPtr memptr) GetChannelInfo(int channel)
+        {
+            // Calculate total number of variables
+            int totalVariables = _slavePdos.Sum(pdo => pdo.Variables.Count);
+            if (channel < 1 || channel > totalVariables)
+            {
+                throw new ArgumentOutOfRangeException(nameof(channel), "Channel is out of range.");
+            }
+
+            int remainingChannels = channel - 1;
+            int pdoIndex = 0;
+
+            // Find the appropriate PDO and variable index
+            while (remainingChannels >= _slavePdos[pdoIndex].Variables.Count)
+            {
+                remainingChannels -= _slavePdos[pdoIndex].Variables.Count;
+                pdoIndex++;
+            }
+
+            int variableIndex = remainingChannels;
+
+            var pdo = _slavePdos[pdoIndex];
+            var variable = pdo.Variables[variableIndex];
+            var bitOffset = variable.BitOffset;
+            var memptr = new IntPtr((void*)variable.DataPtr);
+            
+            return (variable, bitOffset, memptr);
+        }
 
         /// <summary>
         /// Sets digital output value for a specific channel. 
@@ -25,25 +61,19 @@ namespace EtherCAT.NET.Infrastructure
         /// <returns></returns>
         public bool SetChannel(int channel, bool value)
         {
-            var validChannel = ValidateChannel(channel);
+            var (variable, bitOffset, memptr) = GetChannelInfo(channel);
 
-            if (validChannel)
-            {
-                // get slave variable in order to set bit offset
-                var slaveVariable = _slavePdos[channel - 1].Variables.First();
-                var bitOffset = slaveVariable.BitOffset;
-                var memptr = (int*)slaveVariable.DataPtr;
+            int* memptrInt = (int*)memptr.ToPointer();
 
-                if (value)
-                    // set channel bit
-                    memptr[0] |= 1 << bitOffset;
+            
+            if (value)
+                // set channel bit
+                memptrInt[0] |= 1 << bitOffset;
+            else
+                // clear channel bit
+                memptrInt[0] &= ~(1 << bitOffset);
 
-                else
-                    // clear channel bit
-                    memptr[0] &= ~(1 << bitOffset);  
-            }
-
-            return validChannel;
+            return true;
         }
 
         /// <summary>
@@ -53,18 +83,14 @@ namespace EtherCAT.NET.Infrastructure
         /// <returns></returns>
         public bool ToggleChannel(int channel)
         {
-            var validChannel = ValidateChannel(channel);
+            var (variable, bitOffset, memptr) = GetChannelInfo(channel);
 
-            if (validChannel)
-            {
-                // get slave variable in order to set bit offset
-                var slaveVariable = _slavePdos[channel - 1].Variables.First();
-                var memptr = (int*)slaveVariable.DataPtr;
+            int* memptrInt = (int*)memptr.ToPointer();
 
-                memptr[0] ^= 1 << slaveVariable.BitOffset;
-            }
+            // Toggle channel bit
+            memptrInt[0] ^= 1 << bitOffset;
 
-            return validChannel;
+            return true;
         }
     }
 }
