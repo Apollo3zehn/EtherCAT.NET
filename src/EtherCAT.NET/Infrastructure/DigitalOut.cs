@@ -24,7 +24,7 @@ namespace EtherCAT.NET.Infrastructure
         /// <param name="channel"></param>
         /// <returns></returns>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
-        private (SlaveVariable variable, int bitOffset, IntPtr memptr) GetChannelInfo(int channel)
+        private (int bitOffset, IntPtr memptr) GetChannelInfo(int channel)
         {
             // Calculate total number of variables
             int totalVariables = _slavePdos.Sum(pdo => pdo.Variables.Count);
@@ -50,7 +50,7 @@ namespace EtherCAT.NET.Infrastructure
             var bitOffset = variable.BitOffset;
             var memptr = new IntPtr((void*)variable.DataPtr);
             
-            return (variable, bitOffset, memptr);
+            return (bitOffset, memptr);
         }
 
         /// <summary>
@@ -61,7 +61,7 @@ namespace EtherCAT.NET.Infrastructure
         /// <returns></returns>
         public bool SetChannel(int channel, bool value)
         {
-            var (variable, bitOffset, memptr) = GetChannelInfo(channel);
+            var (bitOffset, memptr) = GetChannelInfo(channel);
 
             int* memptrInt = (int*)memptr.ToPointer();
 
@@ -83,7 +83,7 @@ namespace EtherCAT.NET.Infrastructure
         /// <returns></returns>
         public bool ToggleChannel(int channel)
         {
-            var (variable, bitOffset, memptr) = GetChannelInfo(channel);
+            var (bitOffset, memptr) = GetChannelInfo(channel);
 
             int* memptrInt = (int*)memptr.ToPointer();
 
