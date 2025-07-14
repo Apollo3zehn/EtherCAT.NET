@@ -58,6 +58,8 @@ namespace EtherCAT.NET.Infrastructure
 
         public SlaveInfoDynamicData DynamicData { get; set; }
 
+        public bool IgnoreSMConfig { get; set; } = false;
+
         #endregion
 
         #region "Methods"
@@ -103,8 +105,9 @@ namespace EtherCAT.NET.Infrastructure
         public IEnumerable<SdoWriteRequest> GetConfiguration(IEnumerable<SlaveExtension> slaveExtensions)
         {
             _slaveExtensions = slaveExtensions.ToList();
+            IEnumerable<SdoWriteRequest> configuration = this.GetSdoConfiguration().Concat(this.GetPdoConfiguration());
 
-            return this.GetSdoConfiguration().Concat(this.GetPdoConfiguration()).Concat(this.GetSmConfiguration());
+            return IgnoreSMConfig ? configuration : configuration.Concat(this.GetSmConfiguration());
         }
 
         private IEnumerable<SdoWriteRequest> GetSdoConfiguration()
