@@ -55,6 +55,9 @@ namespace EtherCAT.NET
         private Task _watchdogTask;
         private bool _watchDogActive = true;
 
+        // sdo callbacks
+        List<EcHL.PO2SOCallback> _callbacks = new List<EcHL.PO2SOCallback>();
+
         #endregion
 
         #region Constructors
@@ -118,8 +121,6 @@ namespace EtherCAT.NET
 
         private void ConfigureSlaves(IList<SlaveInfo> slaves)
         {
-            var callbacks = new List<EcHL.PO2SOCallback>();
-
             foreach (var slave in slaves)
             {
                 // SDO / PDO config / PDO assign
@@ -128,24 +129,22 @@ namespace EtherCAT.NET
 
                 var sdoWriteRequests = slave.GetConfiguration(extensions).ToList();
 
-                EcHL.PO2SOCallback callback = slaveIndex =>
+                if (sdoWriteRequests.Count != 0)
                 {
-                    sdoWriteRequests.ToList().ForEach(sdoWriteRequest =>
+                    EcHL.PO2SOCallback callback = slaveIndex =>
                     {
-                        EcUtilities.CheckErrorCode(this.Context, EcUtilities.SdoWrite(this.Context, slaveIndex, sdoWriteRequest.Index, sdoWriteRequest.SubIndex, sdoWriteRequest.Dataset), nameof(EcHL.SdoWrite));
-                    });
+                        sdoWriteRequests.ToList().ForEach(sdoWriteRequest =>
+                        {
+                            EcUtilities.CheckErrorCode(this.Context, EcUtilities.SdoWrite(this.Context, slaveIndex, sdoWriteRequest.Index, sdoWriteRequest.SubIndex, sdoWriteRequest.Dataset), nameof(EcHL.SdoWrite));
+                        });
 
-                    return 0;
-                };
+                        return 0;
+                    };
 
-                EcHL.RegisterCallback(this.Context, currentSlaveIndex, callback);
-                callbacks.Add(callback);
+                    EcHL.RegisterCallback(this.Context, currentSlaveIndex, callback);
+                    _callbacks.Add(callback);
+                }
             }
-
-            callbacks.ForEach(callback =>
-            {
-                GC.KeepAlive(callback);
-            });
         }
 
         private void ConfigureIoMap(IList<SlaveInfo> slaves)
@@ -740,6 +739,8 @@ namespace EtherCAT.NET
             {
                 if (_ioMapPtr != IntPtr.Zero)
                     Marshal.FreeHGlobal(_ioMapPtr);
+
+                _callbacks?.Clear();
 
                 _cts?.Cancel();
 
