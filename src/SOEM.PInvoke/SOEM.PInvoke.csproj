@@ -8,9 +8,22 @@
   </PropertyGroup>
 
   <PropertyGroup>
+    <IsWindows>False</IsWindows>
+    <IsLinux>False</IsLinux>
+    <IsLinuxArm>False</IsLinuxArm>
+    <IsPublicBuild>False</IsPublicBuild>
     <IsWindows Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Windows)))' == 'True'">True</IsWindows>
     <IsLinux Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Linux)))' == 'True'">True</IsLinux>
+    <ProcessArchitecture>$([System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture)</ProcessArchitecture>
+    <IsLinuxArm Condition="'$(IsLinux)' == 'True' And ('$(ProcessArchitecture)' == 'Arm' Or '$(ProcessArchitecture)' == 'Arm64')">True</IsLinuxArm>
   </PropertyGroup>
+
+  <Target Name="DumpArchInfo" BeforeTargets="Build">
+    <Message Text="  IsWindows   = '$(IsWindows)'" Importance="High" />
+    <Message Text="  IsLinux     = '$(IsLinux)'" Importance="High" />
+    <Message Text="  IsLinuxArm  = '$(IsLinuxArm)'"  Importance="High" />
+    <Message Text="  ProcessArch = '$(ProcessArchitecture)'" Importance="High" />
+  </Target>
 
   <ItemGroup Condition="'$(IsPublicBuild)' == 'True'">
     <Content Include="./../../artifacts/bin32/SOEM_wrapper/Release/soem_wrapper.dll" Link="runtimes/win-x86/native/soem_wrapper.dll">
@@ -31,7 +44,7 @@
     </Content>
   </ItemGroup>
 
-  <ItemGroup Condition="'$(IsPublicBuild)' == '' AND $(IsWindows) == 'True'">
+  <ItemGroup Condition="'$(IsPublicBuild)' == 'False' AND $(IsWindows) == 'True'">
     <Content Include="./../../artifacts/bin32/SOEM_wrapper/Release/soem_wrapper.dll" Link="runtimes/win-x86/native/soem_wrapper.dll">
       <PackagePath>runtimes/win-x86/native</PackagePath>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
@@ -42,13 +55,24 @@
     </Content>
   </ItemGroup>
 
-  <ItemGroup Condition="'$(IsPublicBuild)' == '' AND $(IsLinux) == 'True'">
+  <ItemGroup Condition="'$(IsPublicBuild)' == 'False' AND $(IsLinux) == 'True' AND '$(IsLinuxArm)' != 'True'">
     <Content Include="./../../artifacts/bin32/SOEM_wrapper/libsoem_wrapper.so" Link="runtimes/linux-x86/native/libsoem_wrapper.so">
       <PackagePath>runtimes/linux-x86/native</PackagePath>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="./../../artifacts/bin64/SOEM_wrapper/libsoem_wrapper.so" Link="runtimes/linux-x64/native/libsoem_wrapper.so">
       <PackagePath>runtimes/linux-x64/native</PackagePath>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(IsPublicBuild)' == 'False' AND $(IsLinux) == 'True' AND '$(IsLinuxArm)' == 'True'">
+    <Content Include="./../../artifacts/arm32/SOEM_wrapper/libsoem_wrapper.so" Link="runtimes/arm/native/libsoem_wrapper.so">
+      <PackagePath>runtimes/arm/native</PackagePath>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="./../../artifacts/arm64/SOEM_wrapper/libsoem_wrapper.so" Link="runtimes/arm64/native/libsoem_wrapper.so">
+      <PackagePath>runtimes/arm64/native</PackagePath>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
