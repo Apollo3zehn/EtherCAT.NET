@@ -243,7 +243,9 @@ namespace EtherCAT.NET
 
         public static long ParseHexDecString(string value)
         {
-            if (value.StartsWith("#x"))
+            if (value == null)
+                return 0;
+            else if (value.StartsWith("#x"))
                 return uint.Parse(value.Replace("#x", string.Empty), NumberStyles.HexNumber);
             else
                 return long.Parse(value);

@@ -47,6 +47,14 @@ namespace SOEM.PInvoke
         #region "called before OP"
 
         /// <summary>
+        /// Disables ACK flag in order to check if slaves have reached preop state.
+        /// </summary>
+        /// <param name="ackEnabled">Flag if ack check is enabled.</param>
+        [SuppressUnmanagedCodeSecurity]
+        [DllImport(EcShared.NATIVE_DLL_NAME)]
+        public static extern int EnablePreopAckCheck(bool ackEnabled);
+
+        /// <summary>
         /// Initializes EtherCAT and scans for connected slaves.
         /// </summary>
         /// <param name="networkInterfaceName">The name of the network interface which is connected to the EtherCAT network.</param>
@@ -303,6 +311,16 @@ namespace SOEM.PInvoke
         [SuppressUnmanagedCodeSecurity]
         [DllImport(EcShared.NATIVE_DLL_NAME)]
         public static extern void UpdateSerialIo(IntPtr context, int slaveIndex);
+
+        /// <summary>
+        /// Returns process data for slave device.
+        /// </summary>
+        /// <param name="slaveIndex">The index of the corresponding slave.</param>
+        /// <param name="output">Output buffer.</param>
+        /// <param name="input">Input buffer.</param>
+        [SuppressUnmanagedCodeSecurity]
+        [DllImport(EcShared.NATIVE_DLL_NAME)]
+        public static extern void GetProcessIo(IntPtr context, int slaveIndex, out IntPtr output, out IntPtr input);
 
         /// <summary>
         /// Request specific state for all slaves.

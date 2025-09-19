@@ -575,6 +575,16 @@ namespace EtherCAT.NET
             EcHL.UpdateSerialIo(this.Context, slaveIndex);
         }
 
+        /// <summary>
+        /// Returns process data for slave device.
+        /// </summary>
+        /// <param name="slaveIndex">The index of the corresponding slave.</param>
+        /// <param name="output">Output buffer.</param>
+        /// <param name="input">Input buffer.</param>
+        public void GetProcessIo(int slaveIndex, out IntPtr output, out IntPtr input)
+        {
+            EcHL.GetProcessIo(this.Context, slaveIndex, out output, out input);
+        }
 
         /// <summary>
         /// Activate watchdog. 

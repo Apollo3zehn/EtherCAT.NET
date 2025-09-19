@@ -295,6 +295,15 @@ namespace EtherCAT.NET
         }
 
         /// <summary>
+        /// Disables ACK flag in order to check if slaves have reached preop state.
+        /// </summary>
+        /// <param name="ackEnabled">Flag if ack check is enabled.</param>
+        public static void EnablePreopAckCheck(bool ackEnabled)
+        {
+            EcHL.EnablePreopAckCheck(ackEnabled);
+        }
+
+        /// <summary>
         /// Initializes EtherCAT and returns found slaves. 
         /// </summary>
         /// <param name="interfaceName">The name of the network adapter.</param>

@@ -59,6 +59,8 @@ uint8 rx_buffer_term[1500];
 
 char tmp_char[255];
 
+bool check_ack_preop = true;
+
 
 
 
@@ -839,6 +841,21 @@ void CALLCONV UpdateSerialIo(ecx_contextt* context, int slave)
 }
 
 /*
+ *  Get process buffers of specific slave device.
+ *
+ *  context: Current context pointer.
+ *  slave: Slave number.
+ *  output: Output buffer.
+ *  input: Input buffer.
+ * 
+ */
+void CALLCONV GetProcessIo(ecx_contextt* context, int slave, char** output, char** input)
+{
+    *output = context->slavelist[slave].outputs;
+    *input = context->slavelist[slave].inputs;
+}
+
+/*
  *  Request specific state for all slaves.
  *
  *  context: Current context pointer
@@ -1066,6 +1083,11 @@ int CALLCONV SdoWrite(ecx_contextt* context, uint16 slaveIndex, uint16 sdoIndex,
     }
 }
 
+void CALLCONV EnablePreopAckCheck(bool ack_enabled)
+{
+    check_ack_preop = ack_enabled;
+}
+
 int CALLCONV ScanDevices(ecx_contextt* context, char* interfaceName, ec_slave_info_t** slaveInfoSet, int* slaveCount)
 {
     int wkc;
@@ -1085,7 +1107,8 @@ int CALLCONV ScanDevices(ecx_contextt* context, char* interfaceName, ec_slave_in
         *slaveCount = *context->slavecount;
 
         // request PREOP state for all slaves
-        int counter = 5;
+        int counter = 15;
+        uint16 PREOP_STATE_CHECK = check_ack_preop ? (EC_STATE_PRE_OP | EC_STATE_ACK) : EC_STATE_PRE_OP;
 
         do
         {
@@ -1093,16 +1116,16 @@ int CALLCONV ScanDevices(ecx_contextt* context, char* interfaceName, ec_slave_in
             
             for (int slaveIndex = 1; slaveIndex < *context->slavecount + 1; slaveIndex++)
             {
-                if(context->slavelist[slaveIndex].state != (EC_STATE_PRE_OP | EC_STATE_ACK))
+                if(context->slavelist[slaveIndex].state != PREOP_STATE_CHECK)
                 {
-                    context->slavelist[slaveIndex].state = EC_STATE_PRE_OP | EC_STATE_ACK;
+                    context->slavelist[slaveIndex].state = PREOP_STATE_CHECK;
                     ecx_writestate(context, slaveIndex);
                 }
             }
             
-        } while (counter-- && (context->slavelist[0].state != (EC_STATE_PRE_OP | EC_STATE_ACK)));
+        } while (counter-- && (context->slavelist[0].state != PREOP_STATE_CHECK));
 
-        if (context->slavelist[0].state != (EC_STATE_PRE_OP | EC_STATE_ACK))
+        if (context->slavelist[0].state != PREOP_STATE_CHECK)
             return -0x0104;
 
         // read real CSA value from EEPROM
