@@ -338,6 +338,10 @@ namespace SOEM.PInvoke
 
         #region "called during OP"
 
+        [SuppressUnmanagedCodeSecurity]
+        [DllImport(EcShared.NATIVE_DLL_NAME)]
+        public static extern int RestoreProcessDataWatchdog(IntPtr context);
+
         /// <summary>
         /// Sends a frame to distribute new output process data and waits for return of this frame to receive input process data.
         /// </summary>

@@ -61,7 +61,16 @@ char tmp_char[255];
 
 bool check_ack_preop = true;
 
+// Process data watchdog register
+#define PD_WATCHDOG 0x0420 
 
+// backup for process data watchdog
+typedef struct {
+    uint16_t value;   // saved value
+    uint8_t  saved;   // 1 = value was saved, 0 = no saved value
+} PdWdBackup;
+
+static PdWdBackup pdwd_backup[EC_MAXSLAVE + 1];
 
 
 uint16 CalculateCrc(byte* data)
@@ -1088,9 +1097,44 @@ void CALLCONV EnablePreopAckCheck(bool ack_enabled)
     check_ack_preop = ack_enabled;
 }
 
+static bool read_process_data_watchdog(ecx_contextt* context, uint16 cfgadr, uint16* out)
+{
+    int wkc = ecx_FPRD(context->port, cfgadr, PD_WATCHDOG, sizeof(uint16), out, EC_TIMEOUTRET);
+    return wkc > 0;
+}
+
+static bool write_process_data_watchdog(ecx_contextt* context, uint16 cfgadr, uint16 val)
+{
+    int wkc = ecx_FPWR(context->port, cfgadr, PD_WATCHDOG, sizeof(uint16), &val, EC_TIMEOUTRET);
+    if (wkc <= 0) return false;
+    
+    // read-back
+    uint16 rd = 0;
+    wkc = ecx_FPRD(context->port, cfgadr, PD_WATCHDOG, sizeof(uint16), &rd, EC_TIMEOUTRET);
+    
+    if (wkc <= 0 || rd != val) return false;
+    
+    return true;
+}
+
+int CALLCONV RestoreProcessDataWatchdog(ecx_contextt* context)
+{
+    for (int slaveIndex = 1; slaveIndex < *context->slavecount + 1; slaveIndex++)
+    {
+        PdWdBackup* watchdog_backup = &pdwd_backup[slaveIndex];
+
+        if (watchdog_backup->saved == 0)
+			continue;
+        
+        if (!write_process_data_watchdog(context, context->slavelist[slaveIndex].configadr, watchdog_backup->value))
+            return -0x0105;
+    }
+
+    return 1;
+}
+
 int CALLCONV ScanDevices(ecx_contextt* context, char* interfaceName, ec_slave_info_t** slaveInfoSet, int* slaveCount)
 {
-    int wkc;
     int watchdogTime;
     int slaveIndex;
 
@@ -1145,17 +1189,21 @@ int CALLCONV ScanDevices(ecx_contextt* context, char* interfaceName, ec_slave_in
 
         for (int slaveIndex = 1; slaveIndex < *context->slavecount + 1; slaveIndex++)
         {
-            // clear watchdog trigger enable in SM control register
-            for (int i = 0; i < EC_MAXSM; i++)
-            {
-                if (context->slavelist[slaveIndex].SMtype[i] == 3)
-                    context->slavelist[slaveIndex].SM[i].SMflags &= ~0x40;
-            }
+            uint16 current_watchdog = 0;
 
-            // clear watchdog time process data register
-            if (!(wkc = ecx_FPWR(context->port, context->slavelist[slaveIndex].configadr, 0x420, sizeof(watchdogTime), &watchdogTime, EC_TIMEOUTRET)))
+			// check if watchdog time process data register was already backed up and cleared
+            if (pdwd_backup[slaveIndex].saved == 0)
             {
-                return -0x0102;
+                // read current watchdog time process data register
+                if (read_process_data_watchdog(context, context->slavelist[slaveIndex].configadr, &current_watchdog))
+                {
+                    pdwd_backup[slaveIndex].saved = 1;
+                    pdwd_backup[slaveIndex].value = current_watchdog;
+                }
+
+                // clear watchdog time process data register
+                if (!write_process_data_watchdog(context, context->slavelist[slaveIndex].configadr, 0))
+                    return -0x0102;
             }
 
             // copy relevant data

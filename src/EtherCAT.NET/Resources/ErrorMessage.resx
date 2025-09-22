@@ -236,4 +236,7 @@ Linux:
   <data name="SoemWrapper_NetworkInterfaceNotFound" xml:space="preserve">
     <value>The specified network interface could not be found.</value>
   </data>
+  <data name="Native_0x0105" xml:space="preserve">
+    <value>Could not restore process data watchdog.</value>
+  </data>
 </root>

@@ -279,6 +279,8 @@ namespace EtherCAT.NET
 
             EcUtilities.CheckErrorCode(this.Context, EcHL.RequestCommonState(this.Context, (UInt16)SlaveState.Operational), nameof(EcHL.RequestCommonState));
 
+            EcUtilities.CheckErrorCode(this.Context, EcHL.RestoreProcessDataWatchdog(this.Context), nameof(EcHL.RestoreProcessDataWatchdog));
+
             #endregion
 
             if (_watchdogTask == null)

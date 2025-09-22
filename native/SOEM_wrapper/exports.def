@@ -37,6 +37,7 @@ EXPORTS
     GetProcessIo
     RequestCommonState
     EnablePreopAckCheck
+    RestoreProcessDataWatchdog
     ScanDevices
     SdoWrite
     UpdateCsa
