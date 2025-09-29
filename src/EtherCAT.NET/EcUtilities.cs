@@ -1,8 +1,10 @@
 ﻿using EtherCAT.NET.Extension;
 using EtherCAT.NET.Infrastructure;
+using Microsoft.Extensions.Logging;
 using SOEM.PInvoke;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net.NetworkInformation;
 using System.Runtime.CompilerServices;
@@ -98,6 +100,63 @@ namespace EtherCAT.NET
             return rawData.ToArray();
         }
 
+        public static string GetErrorString(IntPtr context, int errorCode, [CallerMemberName] string caller = "")
+            => BuildErrorText(context, errorCode, caller);
+
+        public static void LogErrorCode(IntPtr context, int errorCode, ILogger log, [CallerMemberName] string caller = "")
+        {
+            var text = BuildErrorText(context, errorCode, caller);
+
+            if (string.IsNullOrEmpty(text))
+                return;
+
+            using var sr = new StringReader(text);
+            string line;
+
+            while ((line = sr.ReadLine()) != null)
+            {
+                if (!string.IsNullOrWhiteSpace(line))
+                    log.LogError("{Line}", line);
+            }
+        }
+
+        /// <summary>
+        /// Checks if unmanaged status code represents an error. If true this error will be returned.
+        /// </summary>
+        /// <param name="errorCode">The error code.</param>
+        /// <param name="callerMemberName">The name of the calling function.</param>
+        /// <returns>Returns error string.</returns>
+        private static string BuildErrorText(IntPtr context, int errorCode, string caller)
+        {
+            if (errorCode > 0)
+                return string.Empty;
+
+            errorCode = -errorCode;
+
+            var messageManaged = ErrorMessage.ResourceManager.GetString($"Native_0x{errorCode:X4}");
+
+            if (string.IsNullOrWhiteSpace(messageManaged))
+                messageManaged = ErrorMessage.Native_0xFFFF;
+
+            var sb = new StringBuilder().Append(caller).Append(" failed (0x").Append(errorCode.ToString("X4")).Append("): ").Append(messageManaged);
+            var ethercatHeader = false;
+
+            while (EcHL.HasEcError(context))
+            {
+                var messageSoem = Marshal.PtrToStringAnsi(EcHL.GetNextError(context));
+
+                if (!ethercatHeader)
+                {
+                    ethercatHeader = true;
+                    sb.AppendLine().AppendLine("EtherCAT message:");
+                }
+
+                sb.Append(messageSoem);
+            }
+
+            return sb.ToString();
+        }
+
         /// <summary>
         /// Checks if unmanaged status code represents an error. If true this error will be thrown.
         /// </summary>
@@ -105,35 +164,10 @@ namespace EtherCAT.NET
         /// <param name="callerMemberName">The name of the calling function.</param>
         public static void CheckErrorCode(IntPtr context, int errorCode, [CallerMemberName()] string callerMemberName = "")
         {
-            if (errorCode <= 0)
-            {
-                errorCode = -errorCode;
+            var message_combined = GetErrorString(context, errorCode, callerMemberName);
 
-                // message_managed
-                var message_managed = ErrorMessage.ResourceManager.GetString($"Native_0x{ errorCode.ToString("X4") }");
-
-                if (string.IsNullOrWhiteSpace(message_managed))
-                    message_managed = ErrorMessage.Native_0xFFFF;
-
-                // message_SOEM
-                var message_SOEM = string.Empty;
-
-                while (EcHL.HasEcError(context))
-                {
-                    if (!string.IsNullOrWhiteSpace(message_SOEM))
-                        message_SOEM += "\n";
-
-                    message_SOEM += Marshal.PtrToStringAnsi(EcHL.GetNextError(context));
-                }
-
-                // message_combined
-                var message_combined = $"{ callerMemberName } failed (0x{ errorCode.ToString("X4") }): { message_managed }";
-
-                if (!string.IsNullOrWhiteSpace(message_SOEM))
-                    message_combined += $"\n\nEtherCAT message:\n\n{ message_SOEM }";
-
+            if (message_combined != string.Empty)
                 throw new Exception(message_combined);
-            }
         }
 
         public static Dictionary<string, string> GetAvailableNetworkInterfaces()
@@ -277,7 +311,7 @@ namespace EtherCAT.NET
             return newRootSlave;
         }
 
-        public static SlaveInfo ScanDevices(string interfaceName, SlaveInfo referenceRootSlave = null)
+        public static SlaveInfo ScanDevices(string interfaceName, SlaveInfo referenceRootSlave = null, ILogger logger = null)
         {
             var nic = NetworkInterface.GetAllNetworkInterfaces().Where(x => x.Name == interfaceName).FirstOrDefault();
 
@@ -288,7 +322,7 @@ namespace EtherCAT.NET
                 throw new Exception($"The network interface '{interfaceName}' is not linked. Aborting action.");
 
             var context = EcHL.CreateContext();
-            var rootSlave = EcUtilities.ScanDevices(context, interfaceName, referenceRootSlave);
+            var rootSlave = EcUtilities.ScanDevices(context, interfaceName, referenceRootSlave, logger);
             EcHL.FreeContext(context);
 
             return rootSlave;
@@ -308,7 +342,7 @@ namespace EtherCAT.NET
         /// </summary>
         /// <param name="interfaceName">The name of the network adapter.</param>
         /// <returns>Returns found slave.</returns>
-        public static SlaveInfo ScanDevices(IntPtr context, string interfaceName, SlaveInfo referenceSlave = null)
+        public static SlaveInfo ScanDevices(IntPtr context, string interfaceName, SlaveInfo referenceSlave = null, ILogger logger = null)
         {
             ec_slave_info_t[] refSlaveIdentifications = null;
 
@@ -336,7 +370,15 @@ namespace EtherCAT.NET
             else
                 throw new PlatformNotSupportedException();
 
-            EcUtilities.CheckErrorCode(context, EcHL.ScanDevices(context, interfaceName, out var slaveIdentifications, out var slaveCount));
+            var errorString = EcUtilities.GetErrorString(context, EcHL.ScanDevices(context, interfaceName, out var slaveIdentifications, out var slaveCount));
+
+            if (errorString != string.Empty)
+            {
+                if (logger != null)
+                    DumpALStatus(context, logger);
+
+                throw new Exception(errorString);
+            }
 
             // create slaveInfo from received data
             var offset = 0;
@@ -355,6 +397,14 @@ namespace EtherCAT.NET
             }
 
             return EcUtilities.ToSlaveInfo(newSlaveIdentifications);
+        }
+
+        public static void DumpALStatus(IntPtr ctx, ILogger logger)
+        {
+            void cb(int slave, ushort state, ushort al, string name) =>
+                 logger.LogInformation("Slave {Slave} ({Name}): state=0x{State:X2} AL=0x{AL:X4}", slave, name, state, al);
+
+            EcHL.ALStatusForEachSlave(ctx, cb);
         }
 
         public static SlavePdo[] UploadPdoConfig(IntPtr context, UInt16 slave, UInt16 smIndex)

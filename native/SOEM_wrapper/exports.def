@@ -1,4 +1,5 @@
-EXPORTS 
+EXPORTS
+    ALStatusForEachSlave
     CalculateCrc
     CheckSafeOpState
     CompensateDcDrift

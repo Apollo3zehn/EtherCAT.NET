@@ -55,8 +55,7 @@ namespace EtherCAT.NET
         private Task _watchdogTask;
         private bool _watchDogActive = true;
 
-        // sdo callbacks
-        List<EcHL.PO2SOCallback> _callbacks = new List<EcHL.PO2SOCallback>();
+        private static readonly Dictionary<ushort, GCHandle> _callbackHandles = [];
 
         #endregion
 
@@ -125,25 +124,48 @@ namespace EtherCAT.NET
             {
                 // SDO / PDO config / PDO assign
                 var currentSlaveIndex = (ushort)(Convert.ToUInt16(slaves.ToList().IndexOf(slave)) + 1);
-                var extensions = slave.Extensions;
+                var sdoWriteRequests = slave.GetConfiguration(slave.Extensions).ToList();
 
-                var sdoWriteRequests = slave.GetConfiguration(extensions).ToList();
-
-                if (sdoWriteRequests.Count != 0)
+                if (_callbackHandles.TryGetValue(currentSlaveIndex, out var oldHandle))
                 {
-                    EcHL.PO2SOCallback callback = slaveIndex =>
-                    {
-                        sdoWriteRequests.ToList().ForEach(sdoWriteRequest =>
-                        {
-                            EcUtilities.CheckErrorCode(this.Context, EcUtilities.SdoWrite(this.Context, slaveIndex, sdoWriteRequest.Index, sdoWriteRequest.SubIndex, sdoWriteRequest.Dataset), nameof(EcHL.SdoWrite));
-                        });
+                    EcHL.RegisterCallback(this.Context, currentSlaveIndex, IntPtr.Zero);
 
-                        return 0;
-                    };
+                    if (oldHandle.IsAllocated)
+                        oldHandle.Free();
 
-                    EcHL.RegisterCallback(this.Context, currentSlaveIndex, callback);
-                    _callbacks.Add(callback);
+                    _callbackHandles.Remove(currentSlaveIndex);
                 }
+
+                if (sdoWriteRequests.Count == 0)
+                {
+                    EcHL.RegisterCallback(this.Context, currentSlaveIndex, IntPtr.Zero);
+                    continue;
+                }
+
+                EcHL.PO2SOCallback callback = slaveIndex =>
+                {
+                    foreach (var sdoWriteRequest in sdoWriteRequests)
+                    {
+
+                        var errorCode = EcUtilities.SdoWrite(this.Context, slaveIndex, sdoWriteRequest.Index,
+                            sdoWriteRequest.SubIndex, sdoWriteRequest.Dataset);
+
+                        if (errorCode <= 0)
+                        {
+                            _logger.LogError("SDO write failed for slave {SlaveIndex} at index 0x{Index:X4}/{SubIndex:X2}",
+                                slaveIndex, sdoWriteRequest.Index, sdoWriteRequest.SubIndex);
+
+                            EcUtilities.LogErrorCode(Context, errorCode, _logger, nameof(ConfigureSlaves));
+                        }
+                    }
+
+                    return 0;
+                };
+
+                var handle = GCHandle.Alloc(callback);
+                _callbackHandles[currentSlaveIndex] = handle;
+
+                EcHL.RegisterCallback(this.Context, currentSlaveIndex, Marshal.GetFunctionPointerForDelegate(callback));
             }
         }
 
@@ -246,7 +268,7 @@ namespace EtherCAT.NET
 
             #region "PreOp"
 
-            var actualSlave = EcUtilities.ScanDevices(this.Context, _settings.InterfaceName, null);
+            var actualSlave = EcUtilities.ScanDevices(this.Context, _settings.InterfaceName, null, _logger);
 
             if (rootSlave == null)
             {
@@ -271,13 +293,23 @@ namespace EtherCAT.NET
 
             #region "SafeOp"
 
-            EcUtilities.CheckErrorCode(this.Context, EcHL.CheckSafeOpState(this.Context), nameof(EcHL.CheckSafeOpState));
+            var safeOpState = EcHL.CheckSafeOpState(this.Context);
+
+            if (safeOpState <= 0)
+                EcUtilities.DumpALStatus(this.Context, _logger);
+
+            EcUtilities.CheckErrorCode(this.Context, safeOpState, nameof(EcHL.CheckSafeOpState));
 
             #endregion
 
             #region "Op"
 
-            EcUtilities.CheckErrorCode(this.Context, EcHL.RequestCommonState(this.Context, (UInt16)SlaveState.Operational), nameof(EcHL.RequestCommonState));
+            var operationalState = EcHL.RequestCommonState(this.Context, (UInt16)SlaveState.Operational);
+
+            if (operationalState <= 0)
+                EcUtilities.DumpALStatus(this.Context, _logger);
+
+            EcUtilities.CheckErrorCode(this.Context, operationalState, nameof(EcHL.RequestCommonState));
 
             EcUtilities.CheckErrorCode(this.Context, EcHL.RestoreProcessDataWatchdog(this.Context), nameof(EcHL.RestoreProcessDataWatchdog));
 
@@ -703,6 +735,9 @@ namespace EtherCAT.NET
 
                         if (_statusCheckFailedCounter >= _settings.MaxRetries)
                         {
+                            _logger.LogInformation("Watchdog is starting reconfiguration lowest slave state is {State}", state);
+                            EcUtilities.DumpALStatus(this.Context, _logger);
+
                             try
                             {
                                 lock (_lock)
@@ -752,9 +787,13 @@ namespace EtherCAT.NET
                 if (_ioMapPtr != IntPtr.Zero)
                     Marshal.FreeHGlobal(_ioMapPtr);
 
-                _callbacks?.Clear();
-
                 _cts?.Cancel();
+
+                foreach (var handle in _callbackHandles.Values)
+                {
+                    if (handle.IsAllocated)
+                        handle.Free();
+                }
 
                 try
                 {

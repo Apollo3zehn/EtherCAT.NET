@@ -901,6 +901,21 @@ int CALLCONV RequestCommonState(ecx_contextt* context, uint16 state)
     return context->slavelist[0].state == state ? 1 : -0x0601;
 }
 
+void CALLCONV ALStatusForEachSlave(ecx_contextt* context, void CALLCONV callback(int slave, uint16_t state, uint16_t al, const char* name))
+{
+    if (context == NULL || context->slavecount == NULL || callback == NULL) return;
+
+    (void)ecx_readstate(context);
+    int n = *context->slavecount;
+
+    for (int i = 1; i <= n; ++i)
+    {
+        callback(i, context->slavelist[i].state, 
+            context->slavelist[i].ALstatuscode, 
+            context->slavelist[i].name);
+    }
+}
+
 int CALLCONV CheckSafeOpState(ecx_contextt* context)
 {
     ecx_statecheck(context, 0, EC_STATE_SAFE_OP, EC_TIMEOUTSTATE);
@@ -988,7 +1003,7 @@ int CALLCONV ConfigureDc(ecx_contextt* context, uint32 frameCount, uint32 target
     }
 }
 
-int CALLCONV ConfigureIoMap(ecx_contextt* context, char* ioMap, int* slaveRxPdoOffsetSet, int* slaveTxPdoOffsetSet, int* expectedWorkingCounter)
+int CALLCONV ConfigureIoMap(ecx_contextt* context, uint8* ioMap, int* slaveRxPdoOffsetSet, int* slaveTxPdoOffsetSet, int* expectedWorkingCounter)
 {
     int ioMapSize;
 
@@ -1002,12 +1017,12 @@ int CALLCONV ConfigureIoMap(ecx_contextt* context, char* ioMap, int* slaveRxPdoO
     for (int slave = 1; slave < *context->slavecount + 1; slave++)
     {
         if (context->slavelist[slave].outputs != NULL)
-            slaveRxPdoOffsetSet[slave] = (int)(context->slavelist[slave].outputs - (uint8*)ioMap);
+            slaveRxPdoOffsetSet[slave] = (int)(context->slavelist[slave].outputs - ioMap);
         else
             slaveRxPdoOffsetSet[slave] = -1;
 
         if (context->slavelist[slave].inputs != NULL)
-            slaveTxPdoOffsetSet[slave] = (int)(context->slavelist[slave].inputs - (uint8*)ioMap);
+            slaveTxPdoOffsetSet[slave] = (int)(context->slavelist[slave].inputs - ioMap);
         else
             slaveTxPdoOffsetSet[slave] = -1;
     }

@@ -7,13 +7,17 @@ namespace SOEM.PInvoke
     public static class EcHL
     {
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        public delegate double PO2SOCallback(UInt16 slaveIndex);
+        public delegate int PO2SOCallback(UInt16 slaveIndex);
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         public delegate int FOECallback(UInt16 slave, int packetnumber, int datasize);
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         public delegate void SerialRxCallback(UInt16 slave, IntPtr buffer, int datasize);
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        public delegate void ALStatusCallback(int slave, ushort state, ushort alStatus, [MarshalAs(UnmanagedType.LPStr)] string name);
+
 
 
         #region "Helper"
@@ -139,6 +143,11 @@ namespace SOEM.PInvoke
         [SuppressUnmanagedCodeSecurity]
         [DllImport(EcShared.NATIVE_DLL_NAME)]
         public static extern int ConfigureSync01(IntPtr context, ushort slaveIndex, ref byte[] assignActivate, int assignActivateByteLength, uint cycleTime0, uint cycleTime1, int cycleShift);
+
+
+        [SuppressUnmanagedCodeSecurity]
+        [DllImport(EcShared.NATIVE_DLL_NAME)]
+        public static extern int ALStatusForEachSlave(IntPtr context, ALStatusCallback callback);
 
         /// <summary>
         /// Requests SAFE-OP state.
@@ -332,7 +341,7 @@ namespace SOEM.PInvoke
 
         [SuppressUnmanagedCodeSecurity]
         [DllImport(EcShared.NATIVE_DLL_NAME)]
-        public static extern void RegisterCallback(IntPtr context, UInt16 slaveIndex, [MarshalAs(UnmanagedType.FunctionPtr)]PO2SOCallback callback);
+        public static extern void RegisterCallback(IntPtr context, UInt16 slaveIndex, IntPtr pCallBack);
 
         #endregion
 
