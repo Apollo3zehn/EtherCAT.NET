@@ -94,6 +94,17 @@ namespace SOEM.PInvoke
         public static extern int SdoWrite(IntPtr context, UInt16 slaveIndex, UInt16 sdoIndex, byte sdoSubIndex, byte[] dataset, UInt32 datasetCount, Int32[] byteCounts);
 
         /// <summary>
+        /// Checks if a sdo entry with index and sub index exists.
+        /// </summary>
+        /// <param name="slaveIndex">The index of the corresponding slave.</param>
+        /// <param name="sdoIndex">The index of the service data object.</param>
+        /// <param name="sdoSubindex">The sub index of the service data object.</param>
+        /// <returns>Returns true if the sdo entry for the slave exits, false otherwise.</returns>
+        [SuppressUnmanagedCodeSecurity]
+        [DllImport(EcShared.NATIVE_DLL_NAME)]
+        public static extern bool SdoEntryExists(IntPtr context, ushort slaveIndex, ushort sdoIndex, ushort sdoSubindex);
+
+        /// <summary>
         /// Reads service data object data from the mailbox of the corresponding slave.
         /// NoCa means the CA parameter of the native SOEM ecx_SDOread is set to false.
         /// CA = false: single subindex read. CA = true: Complete Access, all subindexes read.

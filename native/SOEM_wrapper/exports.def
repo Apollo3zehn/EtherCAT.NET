@@ -41,6 +41,7 @@ EXPORTS
     RestoreProcessDataWatchdog
     ScanDevices
     SdoWrite
+    SdoEntryExists
     UpdateCsa
     UpdateIo
     UploadPdoConfig

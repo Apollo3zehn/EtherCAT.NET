@@ -1,4 +1,4 @@
-/* 
+﻿/* 
  *	Timeout occurs often. Effects are:
  *
  *	- wkc = 0 BUT ecx_SDOread succeeds (!) (see ecx_readPDOassign) -> Slaves do no start and throw ADS error 0x1D or 0x1E because sync manager length is not correctly calculated.
@@ -914,6 +914,77 @@ void CALLCONV ALStatusForEachSlave(ecx_contextt* context, void CALLCONV callback
             context->slavelist[i].ALstatuscode, 
             context->slavelist[i].name);
     }
+}
+
+static bool sdo_entry_exists(ecx_contextt* context, uint16 slaveIndex, uint16 sdoIndex, uint8 sdoSubIndex)
+{
+    uint8 buf[256];
+    memset(buf, 0, sizeof(buf));
+    int size = sizeof(buf);
+
+    int rc = ecx_SDOread(context, slaveIndex, sdoIndex, sdoSubIndex, FALSE, &size, buf, EC_TIMEOUTRXM);
+    
+    if (rc == 1)
+        return true;
+
+    bool sawRelevantError = false;
+    bool exists = false;
+    ec_errort err;
+
+    while (ecx_iserror(context))
+    {
+        memset(&err, 0, sizeof(err));
+        ecx_poperror(context, &err);
+
+        if (err.Etype != EC_ERR_TYPE_SDO_ERROR) continue;
+        if (err.Slave != slaveIndex)            continue;
+        if (err.Index != sdoIndex)              continue;
+
+        sawRelevantError = true;
+
+        //  index does not exist           sub index does not exist  
+        if (err.AbortCode == 0x06020000 || err.AbortCode == 0x06090011)
+			break;
+
+        exists = true;
+        break;
+    }
+
+    if (sawRelevantError)
+        return exists;
+
+    return false;
+}
+
+bool CALLCONV SdoEntryExists(ecx_contextt* context, uint16 slaveIndex, uint16 sdoIndex, uint8 sdoSubIndex)
+{
+    ec_ODlistt odList;
+    memset(&odList, 0, sizeof(odList));
+
+    if (ecx_readODlist(context, slaveIndex, &odList) == 0 || odList.Entries == 0)
+        return sdo_entry_exists(context, slaveIndex, sdoIndex, sdoSubIndex);
+
+    int item = -1;
+    
+    for (int i = 0; i < odList.Entries; ++i) 
+    {
+        if (odList.Index[i] == sdoIndex) 
+        { 
+            item = i; 
+            break; 
+        }
+    }
+
+    if (item < 0)
+        return sdo_entry_exists(context, slaveIndex, sdoIndex, sdoSubIndex);
+
+    if (sdoSubIndex == 0x00)
+        return true;
+
+    if (ecx_readODdescription(context, (uint16)item, &odList) == 0)
+        return sdo_entry_exists(context, slaveIndex, sdoIndex, sdoSubIndex);
+
+    return (sdoSubIndex <= odList.MaxSub[item]);
 }
 
 int CALLCONV CheckSafeOpState(ecx_contextt* context)

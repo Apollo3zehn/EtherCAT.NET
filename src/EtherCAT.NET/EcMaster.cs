@@ -5,13 +5,14 @@ using Microsoft.Extensions.Logging.Abstractions;
 using SOEM.PInvoke;
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Net.NetworkInformation;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
-using System.IO;
 
 namespace EtherCAT.NET
 {
@@ -146,6 +147,10 @@ namespace EtherCAT.NET
                 {
                     foreach (var sdoWriteRequest in sdoWriteRequests)
                     {
+                        var bytes = sdoWriteRequest.Dataset.SelectMany(value => value.ToByteArray()).ToArray();
+
+                        _logger.LogInformation("SDO write for slave {SlaveIndex} at index 0x{Index:X4}/{SubIndex:X2} data {Data}",
+                            slaveIndex, sdoWriteRequest.Index, sdoWriteRequest.SubIndex, BitConverter.ToString(bytes));
 
                         var errorCode = EcUtilities.SdoWrite(this.Context, slaveIndex, sdoWriteRequest.Index,
                             sdoWriteRequest.SubIndex, sdoWriteRequest.Dataset);
@@ -509,7 +514,7 @@ namespace EtherCAT.NET
         /// <returns>True if operation was successful, false otherwise.</returns>
         public bool ForwardEthernetToSlave(int slaveIndex, int deviceId)
         {
-            return EcHL.ForwardEthernetToSlave(this.Context, slaveIndex, deviceId);
+            return !_isReconfiguring && EcHL.ForwardEthernetToSlave(this.Context, slaveIndex, deviceId);
         }
 
         /// <summary>
@@ -521,7 +526,7 @@ namespace EtherCAT.NET
         /// <returns>True if operation was successful, false otherwise.</returns>
         public bool ForwardEthernetToTapDevice(int slaveIndex, int deviceId)
         {
-            return EcHL.ForwardEthernetToTapDevice(this.Context, slaveIndex, deviceId);
+            return !_isReconfiguring && EcHL.ForwardEthernetToTapDevice(this.Context, slaveIndex, deviceId);
         }
 
         /// <summary>
@@ -554,7 +559,7 @@ namespace EtherCAT.NET
         /// <returns>True if any data was forwarded, false otherwise.</returns>
         public bool SendSerialDataToSlave(int slaveIndex, int deviceId)
         {
-            return EcHL.SendSerialDataToSlave(slaveIndex, deviceId);
+            return !_isReconfiguring && EcHL.SendSerialDataToSlave(slaveIndex, deviceId);
         }
 
         /// <summary>
@@ -565,7 +570,7 @@ namespace EtherCAT.NET
         /// <returns>True if any data was forwarded, false otherwise.</returns>
         public bool ReadSerialDataFromSlave(int slaveIndex, int deviceId)
         {
-            return EcHL.ReadSerialDataFromSlave(slaveIndex, deviceId);
+            return !_isReconfiguring && EcHL.ReadSerialDataFromSlave(slaveIndex, deviceId);
         }
 
         /// <summary>
@@ -606,7 +611,8 @@ namespace EtherCAT.NET
         /// <param name="slaveIndex">The index of the corresponding slave.</param>
         public void UpdateSerialIo(int slaveIndex)
         {
-            EcHL.UpdateSerialIo(this.Context, slaveIndex);
+            if (!_isReconfiguring)
+                EcHL.UpdateSerialIo(this.Context, slaveIndex);
         }
 
         /// <summary>
