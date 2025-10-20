@@ -1,6 +1,6 @@
-/** \file
- * \brief
- * Implementation of serial communication for Beckhoff EL6021.
+/**
+ * @file
+ * @brief Serial handshake for Beckhoff EL/KL EtherCAT terminals;
  */
 
 #include "serial.h"
@@ -10,7 +10,7 @@
 
 #ifndef PACKED
 
-#if defined(__GNUC__) || defined(__ARMEL__) || defined(__APPLE__) 
+#if defined(__GNUC__) || defined(__ARMEL__) || defined(__APPLE__)
 #define PACKED_BEGIN
 #define PACKED   __attribute__((__packed__))
 #define PACKED_END
@@ -22,8 +22,59 @@
 
 #endif
 
+// cast - helper
+#define TX_S(s) ((tx_control_s_t*)((s)->tx_control))
+#define TX_B(s) ((tx_control_b_t*)((s)->tx_control))
 
-// Tx control bitmap
+// makro to set a named field:
+#define TX_SET(s, field, value) do {                    \
+    if ((s)->layout_kind == SMALL)                      \
+        TX_S(s)->field = (value);                       \
+    else                                                \
+        TX_B(s)->field = (value);                       \
+} while(0)
+
+// makro to read a named field (returns uint8_t):
+#define TX_GET_U8(s, field) (uint8_t)(                  \
+    ((s)->layout_kind == SMALL) ?                       \
+        (TX_S(s)->field) : (TX_B(s)->field) )
+
+// cast - helper
+#define RX_S(s) ((rx_status_s_t*)((s)->rx_status))
+#define RX_B(s) ((rx_status_b_t*)((s)->rx_status))
+
+// makro to set a named field:
+#define RX_SET(s, field, value) do {                    \
+    if ((s)->layout_kind == SMALL)                      \
+        RX_S(s)->field = (value);                       \
+    else                                                \
+        RX_B(s)->field = (value);                       \
+} while(0)
+
+// makro to read a named field (returns uint8_t):
+#define RX_GET_U8(s, field) (uint8_t)(                  \
+    ((s)->layout_kind == SMALL) ?                       \
+        (RX_S(s)->field) : (RX_B(s)->field) )
+
+
+// Layout kind of tx control and rx status
+typedef enum { SMALL, BIG } layout_kind_t;
+
+// Tx control bitmap (small layout)
+PACKED_BEGIN
+typedef struct PACKED
+{
+    uint8_t transmit_request : 1;
+    uint8_t receive_accepted : 1;
+    uint8_t init_request : 1;
+    uint8_t send_continuous : 1;
+    uint8_t output_length : 3;
+    uint8_t register_modus : 1;
+
+} tx_control_s_t;
+PACKED_END
+
+// Tx control bitmap (big layout)
 PACKED_BEGIN
 typedef struct PACKED
 {
@@ -37,10 +88,24 @@ typedef struct PACKED
     uint8_t unused_bit_7 : 1;
     uint8_t output_length;
 
-} tx_control_t;
+} tx_control_b_t;
 PACKED_END
 
-// Rx status bitmap
+// Rx status bitmap (small layout)
+PACKED_BEGIN
+typedef struct PACKED
+{
+    uint8_t transmit_accepted : 1;
+    uint8_t receive_request : 1;
+    uint8_t init_accepted : 1;
+    uint8_t buffer_full : 1;
+    uint8_t input_length : 3;
+    uint8_t register_modus : 1;
+
+} rx_status_s_t;
+PACKED_END
+
+// Rx status bitmap (big layout)
 PACKED_BEGIN
 typedef struct PACKED
 {
@@ -54,7 +119,7 @@ typedef struct PACKED
     uint8_t unused_bit_7 : 1;
     uint8_t input_length;
 
-} rx_status_t;
+} rx_status_b_t;
 PACKED_END
 
 
@@ -74,7 +139,8 @@ struct sm_state_data_t
     uint16_t slave;
     bool slave_set;
 
-    tx_control_t* tx_control;
+    layout_kind_t layout_kind;
+    void* tx_control;
     uint8_t* tx_buffer;
     uint8_t* tx_cache;
 
@@ -83,7 +149,7 @@ struct sm_state_data_t
     bool tx_cache_full;
     bool tx_cache_empty;
 
-    rx_status_t* rx_status;
+    void* rx_status;
     uint8_t* rx_buffer;
     uint8_t* rx_cache;
     int rx_offset;
@@ -100,8 +166,25 @@ struct sm_state_data_t
     bool receive_request;
     bool transmit_request;
 
-    void (*rx_callback)(uint16_t slave, uint8_t* buffer, int datasize);
+    rx_callback_t rx_callback;
 };
+
+// Functions to get sizes of tx control and rx status layout
+size_t get_tx_control_size(struct sm_state_data_t* data)
+{
+    if (data->layout_kind == SMALL)
+        return sizeof(tx_control_s_t);
+    else
+        return sizeof(tx_control_b_t);
+}
+
+size_t get_rx_status_size(struct sm_state_data_t* data)
+{
+    if (data->layout_kind == SMALL)
+        return sizeof(rx_status_s_t);
+    else
+        return sizeof(rx_status_b_t);
+}
 
 // State functions
 static void state_init_enter(struct sm_state_data_t* data);
@@ -132,14 +215,14 @@ static bool is_tx_cache_empty(struct sm_state_data_t* data);
  *  returns: Pointer to sm_state_data_t struct.
  */
 static struct sm_state_data_t* set_state(int slave)
-{ 
+{
     struct sm_state_data_t* state = NULL;
     for(int i = 0; i < MAX_SLAVES; i ++)
     {
         if(!_state_data[i].slave_set)
-        {  
+        {
             _state_data[i].slave = slave;
-            _state_data[i].slave_set = true; 
+            _state_data[i].slave_set = true;
             state = &_state_data[i];
             _mapping_index[i] = slave;
             break;
@@ -174,9 +257,12 @@ static struct sm_state_data_t* get_state(int slave)
  *  Initialize state struct data entry.
  *
  *  state: Pointer to sm_state_data_t struct.
+ *  multibyte_ctrl_status: True if both tx control and rx status registers are multi-byte.
+ *
  */
-static void init_state_data(struct sm_state_data_t* state)
+static void init_state_data(struct sm_state_data_t* state, bool multibyte_ctrl_status)
 {
+	state->layout_kind = multibyte_ctrl_status ? BIG : SMALL;
     state->tx_control = NULL;
     state->tx_buffer = NULL;
     state->tx_cache_head = 0;
@@ -200,22 +286,23 @@ static void init_state_data(struct sm_state_data_t* state)
  *  Initialize state struct data entry and alloc buffer for tx/rx cache.
  *
  *  slave: Slave number.
+ *  multibyte_ctrl_status: True if both tx control and rx status registers are multi-byte.
  *  returns: True if successfully initialized, false otherwise.
  */
-bool init_serial(uint16_t slave)
+bool init_serial(uint16_t slave, bool multibyte_ctrl_status)
 {
     struct sm_state_data_t* state = set_state(slave);
     if(state == NULL)
         return false;
-    
-    init_state_data(state);
+
+    init_state_data(state, multibyte_ctrl_status);
     state->current_state = &state_init_enter;
 
     if(state->tx_cache == NULL)
-        state->tx_cache = (uint8_t*)malloc(TX_CACHE_SIZE);
+        state->tx_cache = (uint8_t*)calloc(TX_CACHE_SIZE, sizeof(uint8_t) * TX_CACHE_SIZE);
 
-    if(state->rx_cache == NULL)    
-        state->rx_cache = (uint8_t*)malloc(RX_CACHE_SIZE);
+    if(state->rx_cache == NULL)
+        state->rx_cache = (uint8_t*)calloc(RX_CACHE_SIZE, sizeof(uint8_t) * RX_CACHE_SIZE);
 
     return true;
 }
@@ -234,7 +321,7 @@ bool close_serial(uint16_t slave)
     {
         state->slave_set = false;
         state->slave = 0;
-        init_state_data(state);
+        init_state_data(state, false);
 
         if(state->tx_cache != NULL)
         {
@@ -243,7 +330,7 @@ bool close_serial(uint16_t slave)
         }
 
         if(state->rx_cache != NULL)
-        {    
+        {
             free(state->rx_cache);
             state->rx_cache = NULL;
         }
@@ -269,7 +356,7 @@ bool close_serial(uint16_t slave)
  *  slave: Slave number.
  *  callack: Pointer to callback function.
  */
-void register_rx_callback(uint16_t slave, void callback(uint16_t slave, uint8_t* buffer, int datasize))
+void register_rx_callback(uint16_t slave, rx_callback_t callback)
 {
     struct sm_state_data_t* state = get_state(slave);
     if(state != NULL)
@@ -291,14 +378,14 @@ bool set_tx_buffer(uint16_t slave, uint8_t* tx_buffer, int datasize)
 {
     bool success = false;
     struct sm_state_data_t* data = get_state(slave);
-    
+
     if((data != NULL) && ((TX_CACHE_SIZE - get_nof_tx_cache_elements(data)) >= datasize))
     {
         write_tx_cache(data, tx_buffer, datasize);
         data->transmit_request = true;
         success = true;
     }
-    
+
     return success;
 }
 
@@ -317,9 +404,9 @@ bool get_rx_buffer(uint16_t slave, uint8_t* rx_buffer, int* datasize)
     struct sm_state_data_t* state = get_state(slave);
     if(state != NULL && state->rx_updated)
     {
-        if(*datasize >= state->rx_status->input_length)
+        if(*datasize >= RX_GET_U8(state, input_length))
         {
-            *datasize = state->rx_status->input_length;
+            *datasize = RX_GET_U8(state, input_length);
             memcpy(rx_buffer, state->rx_buffer, *datasize);
             state->rx_updated = false;
             success = true;
@@ -341,11 +428,11 @@ void update_serial(uint16_t slave, uint8_t* tx_data, uint8_t* rx_data)
     struct sm_state_data_t* state = get_state(slave);
     if(state != NULL)
     {
-        state->tx_control = (tx_control_t *)tx_data;
-        state->tx_buffer = tx_data + sizeof(uint16_t);
+        state->tx_control = tx_data;
+        state->tx_buffer = tx_data + get_tx_control_size(state);
 
-        state->rx_status = (rx_status_t *)rx_data;
-        state->rx_buffer = rx_data + sizeof(uint16_t);
+        state->rx_status = rx_data;
+        state->rx_buffer = rx_data + get_rx_status_size(state);
 
         if(state->current_state != NULL)
         {
@@ -365,7 +452,7 @@ static void check_receive_request(struct sm_state_data_t* data)
 {
     if(data->initialized)
     {
-        const uint8_t current_receive_request = data->rx_status->receive_request;
+        const uint8_t current_receive_request = RX_GET_U8(data, receive_request);
 
         if (current_receive_request != data->receive_request_bit)
         {
@@ -384,7 +471,7 @@ static void state_init_enter(struct sm_state_data_t* data)
 {
     if (!data->initialized)
     {
-        data->tx_control->init_request = 1;
+		TX_SET(data, init_request, 1);
         data->next_state = &state_init_run;
     }
     else
@@ -400,13 +487,13 @@ static void state_init_enter(struct sm_state_data_t* data)
  */
 static void state_init_run(struct sm_state_data_t* data)
 {
-    if ((data->tx_control->init_request == 1) && (data->rx_status->init_accepted == 1))
+    if (TX_GET_U8(data, init_request) == 1 && RX_GET_U8(data, init_accepted) == 1)
     {
-        data->tx_control->init_request = 0;
+		TX_SET(data, init_request, 0);
     }
-    else if ((data->tx_control->init_request == 0) && (data->rx_status->init_accepted == 0))
+    else if (TX_GET_U8(data, init_request) == 0 && RX_GET_U8(data, init_accepted) == 0)
     {
-        data->receive_request_bit = data->rx_status->receive_request;
+        data->receive_request_bit = RX_GET_U8(data, receive_request);
         data->initialized = true;
         data->next_state = &state_idle_run;
     }
@@ -441,7 +528,7 @@ static void state_idle_run(struct sm_state_data_t* data)
  */
 static void state_receive_run(struct sm_state_data_t* data)
 {
-    uint8_t length = data->rx_status->input_length;
+    uint8_t length = RX_GET_U8(data, input_length);
     if((data->rx_offset + length) > RX_CACHE_SIZE)
     {
         data->rx_offset = 0;
@@ -453,10 +540,11 @@ static void state_receive_run(struct sm_state_data_t* data)
 
     if(data->rx_callback != NULL)
     {
-        data->rx_callback(data->slave, data->rx_buffer, length);
+        bool rx_fifo_full = RX_GET_U8(data, buffer_full);
+        data->rx_callback(data->slave, data->rx_buffer, length, rx_fifo_full);
     }
-    
-    data->next_state = &state_receive_accepted;
+
+    state_receive_accepted(data);
 }
 
 /*
@@ -469,7 +557,7 @@ static void state_receive_accepted(struct sm_state_data_t* data)
     data->rx_updated = true;
     data->receive_request = false;
     // toggle accepted bit
-    data->tx_control->receive_accepted = !data->tx_control->receive_accepted;
+    TX_SET(data, receive_accepted, !TX_GET_U8(data, receive_accepted));
 
     data->next_state = &state_idle_run;
 }
@@ -491,12 +579,12 @@ static void state_transmit_run(struct sm_state_data_t* data)
 
     // fill tx buffer
     read_tx_cache(data, data->tx_buffer, data_length);
-    data->tx_control->output_length = data_length;
+	TX_SET(data, output_length, data_length);
 
     // store transmit accepted bit
-    data->transmit_accepted_bit = data->rx_status->transmit_accepted;
+    data->transmit_accepted_bit = RX_GET_U8(data, transmit_accepted);
     // toggle transmit request
-    data->tx_control->transmit_request = !data->tx_control->transmit_request;
+    TX_SET(data, transmit_request, !TX_GET_U8(data, transmit_request));
     // set wait for transmit state and wait for tx accepted
     data->next_state = &state_wait_transmit_accepted;
 }
@@ -508,12 +596,12 @@ static void state_transmit_run(struct sm_state_data_t* data)
  */
 static void state_wait_transmit_accepted(struct sm_state_data_t* data)
 {
-    if (data->transmit_accepted_bit != data->rx_status->transmit_accepted)
+    if (data->transmit_accepted_bit != RX_GET_U8(data, transmit_accepted))
     {
         if (get_nof_tx_cache_elements(data) == 0)
         {
             data->transmit_request = false;
-            data->next_state = &state_idle_run;     
+            data->next_state = &state_idle_run;
         }
         else
         {
@@ -589,15 +677,15 @@ static void read_tx_cache(struct sm_state_data_t* data, uint8_t* buffer, int len
 static void update_tx_cache_write(struct sm_state_data_t* data, int length)
 {
     bool overflow = length >= (TX_CACHE_SIZE - get_nof_tx_cache_elements(data));
-	
+
     if(data->tx_cache_full)
         data->tx_cache_tail = (data->tx_cache_tail + length) % TX_CACHE_SIZE;
-    
+
     data->tx_cache_head = (data->tx_cache_head + length) % TX_CACHE_SIZE;
 
     if(overflow)
         data->tx_cache_tail = data->tx_cache_head;
-    
+
     data->tx_cache_full = (data->tx_cache_head == data->tx_cache_tail);
 }
 
@@ -638,7 +726,7 @@ static int get_nof_tx_cache_elements(struct sm_state_data_t* data)
  */
 static bool is_tx_cache_empty(struct sm_state_data_t* data)
 {
-    return (data->tx_cache_tail == data->tx_cache_head) && !data->tx_cache_full; 
+    return (data->tx_cache_tail == data->tx_cache_head) && !data->tx_cache_full;
 }
 
 

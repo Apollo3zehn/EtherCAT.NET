@@ -13,7 +13,7 @@ namespace SOEM.PInvoke
         public delegate int FOECallback(UInt16 slave, int packetnumber, int datasize);
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        public delegate void SerialRxCallback(UInt16 slave, IntPtr buffer, int datasize);
+        public delegate void SerialRxCallback(UInt16 slave, IntPtr buffer, int datasize, bool rxFifoFull);
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         public delegate void ALStatusCallback(int slave, ushort state, ushort alStatus, [MarshalAs(UnmanagedType.LPStr)] string name);
@@ -197,7 +197,7 @@ namespace SOEM.PInvoke
         /// <param name="length">The file length of firmware file.</param>
         /// <returns>Returns workcounter from last slave response.</returns>
         [SuppressUnmanagedCodeSecurity]
-        [DllImport(EcShared.NATIVE_DLL_NAME)] 
+        [DllImport(EcShared.NATIVE_DLL_NAME)]
         public static extern int DownloadFirmware(IntPtr context, int slaveIndex, string fileName, int length);
 
 
@@ -291,10 +291,11 @@ namespace SOEM.PInvoke
         /// Initialize serial handshake processing for slave device.
         /// </summary>
         /// <param name="slaveIndex">The index of the corresponding slave.</param>
+        /// <param name="multibyteCtrlStatus">True if both tx control and rx status registers are multi-byte.</param>
         /// <returns>True if initialization was successful, false otherwise.</returns>
         [SuppressUnmanagedCodeSecurity]
         [DllImport(EcShared.NATIVE_DLL_NAME)]
-        public static extern bool InitSerial(int slaveIndex);
+        public static extern bool InitSerial(int slaveIndex, bool multibyteCtrlStatus);
 
         /// <summary>
         /// Close serial handshake processing for slave device.
@@ -331,6 +332,16 @@ namespace SOEM.PInvoke
         [SuppressUnmanagedCodeSecurity]
         [DllImport(EcShared.NATIVE_DLL_NAME)]
         public static extern void UpdateSerialIo(IntPtr context, int slaveIndex);
+
+        /// <summary>
+        /// Update serial handshake processing for standard slave device.
+        /// </summary>
+        /// <param name="slaveIndex">The index of the corresponding slave.</param>
+        /// <param name="input">Input process buffer.</param>
+        /// <param name="output">Output process buffer.</param>
+        [SuppressUnmanagedCodeSecurity]
+        [DllImport(EcShared.NATIVE_DLL_NAME)]
+        public static extern void UpdateSerialIoStandard(int slaveIndex, IntPtr input, IntPtr output);
 
         /// <summary>
         /// Returns process data for slave device.

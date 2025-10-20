@@ -5,7 +5,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using SOEM.PInvoke;
 using System;
 using System.Collections.Generic;
-using System.Data;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -62,7 +61,7 @@ namespace EtherCAT.NET
 
         #region Constructors
 
-        public EcMaster(EcSettings settings) 
+        public EcMaster(EcSettings settings)
             : this(settings, NullLogger.Instance)
         {
             //
@@ -113,7 +112,7 @@ namespace EtherCAT.NET
 
             for (int i = 0; i <= actualSlaves.Count() - 1; i++)
             {
-                if (!(actualSlaves[i].ProductCode == slaves[i].ProductCode 
+                if (!(actualSlaves[i].ProductCode == slaves[i].ProductCode
                    && actualSlaves[i].Revision == slaves[i].Revision))
                     throw new Exception(ErrorMessage.EthercatGateway_EtherCATConfigurationMismatch);
             }
@@ -198,11 +197,11 @@ namespace EtherCAT.NET
                     var slaveByteOffset = slavePdoOffsets[slaves.ToList().IndexOf(slave) + 1];
 
                     // reset bit offset if byte offset changes
-                    if( slaveByteOffset != ioMapByteOffset )
+                    if (slaveByteOffset != ioMapByteOffset)
                         ioMapBitOffset = 0;
 
                     ioMapByteOffset = slaveByteOffset;
-                    
+
                     foreach (var variable in slave.DynamicData.Pdos
                         .Where(pdo => pdo.SyncManager >= 0)
                         .SelectMany(pdo => pdo.Variables)
@@ -345,13 +344,13 @@ namespace EtherCAT.NET
 
                     if (_lostFrameCounter == _settings.CycleFrequency)
                     {
-                        _logger.LogWarning($"frame loss occured ({ _settings.CycleFrequency } frames)");
+                        _logger.LogWarning($"frame loss occured ({_settings.CycleFrequency} frames)");
                         _lostFrameCounter = 0;
                     }
 
                     if (_wkcMismatchCounter == _settings.CycleFrequency)
                     {
-                        _logger.LogWarning($"working counter mismatch { _actualWorkingCounter }/{ _expectedWorkingCounter }");
+                        _logger.LogWarning($"working counter mismatch {_actualWorkingCounter}/{_expectedWorkingCounter}");
                         //Trace.WriteLine(EcUtilities.GetSlaveStateDescription(_ecSettings.RootSlaves.SelectMany(x => x.Descendants()).ToList()));
                         _wkcMismatchCounter = 0;
                     }
@@ -577,10 +576,11 @@ namespace EtherCAT.NET
         /// Initialize serial handshake processing for slave device.
         /// </summary>
         /// <param name="slaveIndex">The index of the corresponding slave.</param>
+        /// <param name="multibyteCtrlStatus">True if both tx control and rx status registers are multi-byte.</param>
         /// <returns>True if initialization was successful, false otherwise.</returns>
-        public bool InitSerial(int slaveIndex)
+        public bool InitSerial(int slaveIndex, bool multibyteCtrlStatus)
         {
-            return EcHL.InitSerial(slaveIndex);
+            return EcHL.InitSerial(slaveIndex, multibyteCtrlStatus);
         }
 
         /// <summary>
@@ -613,6 +613,18 @@ namespace EtherCAT.NET
         {
             if (!_isReconfiguring)
                 EcHL.UpdateSerialIo(this.Context, slaveIndex);
+        }
+
+        /// <summary>
+        /// Update serial handshake processing for standard slave device.
+        /// </summary>
+        /// <param name="slaveIndex">The index of the corresponding slave.</param>
+        /// <param name="input">Input process buffer.</param>
+        /// <param name="output">Output process buffer.</param>
+        public void UpdateSerialIoStandard(int slaveIndex, IntPtr input, IntPtr output)
+        {
+            if (!_isReconfiguring)
+                EcHL.UpdateSerialIoStandard(slaveIndex, input, output);
         }
 
         /// <summary>
@@ -672,7 +684,7 @@ namespace EtherCAT.NET
         /// <param name="fileName">Absolute path to firmware file.</param>
         /// <returns>True if operation was successful, false otherwise./returns>
         public bool DownloadFirmware(int slaveIndex, string fileName)
-        { 
+        {
             FileInfo fileInfo = new FileInfo(fileName);
             if (!fileInfo.Exists)
                 return false;
@@ -690,9 +702,9 @@ namespace EtherCAT.NET
                         int totalPackages = 0;
                         int remainingSize = -1;
 
-                        EcHL.FOECallback callback = (slaveIndex, packageNumber,  datasize) =>
+                        EcHL.FOECallback callback = (slaveIndex, packageNumber, datasize) =>
                         {
-                            if(packageNumber == 0)
+                            if (packageNumber == 0)
                                 _logger.LogInformation($"FoE: Write {datasize} bytes to {slaveIndex}. slave");
                             else
                                 _logger.LogInformation($"FoE: {packageNumber}. package with {remainingSize - datasize} bytes written to {slaveIndex}. slave. Remaining data: {datasize} bytes");
@@ -700,7 +712,7 @@ namespace EtherCAT.NET
                             if (currentPackageNumber != packageNumber)
                             {
                                 currentPackageNumber = packageNumber;
-                                if(packageNumber != 0)
+                                if (packageNumber != 0)
                                     totalPackages++;
                             }
 
@@ -776,10 +788,10 @@ namespace EtherCAT.NET
                         }
 
                         _statusCheckFailedCounter = 0;
-                    }    
+                    }
                 }
                 _cts.Token.WaitHandle.WaitOne(TimeSpan.FromSeconds(_settings.WatchdogSleepTime));
-            }   
+            }
         }
 
         #region IDisposable Support

@@ -35,6 +35,7 @@ EXPORTS
     RegisterSerialRxCallback
     SetTxBuffer
     UpdateSerialIo
+    UpdateSerialIoStandard
     GetProcessIo
     RequestCommonState
     EnablePreopAckCheck
