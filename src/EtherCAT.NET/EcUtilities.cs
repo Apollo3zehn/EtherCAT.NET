@@ -10,6 +10,7 @@ using System.Net.NetworkInformation;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading;
 
 namespace EtherCAT.NET
 {
@@ -70,13 +71,12 @@ namespace EtherCAT.NET
             }
         }
 
-
         public static EthercatDataType ParseEtherCatDataType(string value)
         {
             if (value == null)
                 return 0;
             else
-                return (EthercatDataType)Enum.Parse(typeof(EthercatDataType), value);
+                return EhterCatDataTypeHelper.ParseEthercatDataType(value, out _);
         }
 
         public static IEnumerable<T> TrueDistinct<T>(this IEnumerable<T> inputs)
@@ -311,6 +311,95 @@ namespace EtherCAT.NET
             return newRootSlave;
         }
 
+        public static void CreateModules(SlaveInfo slave, int moduleIdent)
+        {
+            // We’re trying to find an entry for the module ident number in the ESI cache. An cache entry may not exist because, for
+            // example, K - Bus terminals are not shipped with an ESI file, but they are mapped in the Modular Device Profile (MDP).
+
+            var module = EsiUtilities.FindModule(slave.Manufacturer, moduleIdent);
+
+            if (module == null)
+                return;
+
+            var pdos = new List<SlavePdo>();
+            var base64ImageData = ""u8.ToArray();
+
+            foreach (DataDirection dataDirection in Enum.GetValues(typeof(DataDirection)))
+            {
+                IEnumerable<PdoType> pdoTypes = null;
+
+                switch (dataDirection)
+                {
+                    case DataDirection.Output:
+                        pdoTypes = module.RxPdo;
+                        break;
+                    case DataDirection.Input:
+                        pdoTypes = module.TxPdo;
+                        break;
+                }
+
+                if (pdoTypes == null)
+                    continue;
+
+                foreach (var pdoType in pdoTypes)
+                {
+                    var osMax = Convert.ToUInt16(pdoType.OSMax);
+
+                    if (osMax == 0)
+                    {
+                        var pdoName = pdoType.Name.First().Value;
+                        var pdoIndex = (ushort)EsiUtilities.ParseHexDecString(pdoType.Index.Value);
+                        var syncManager = pdoType.SmSpecified ? pdoType.Sm : -1;
+
+                        var slavePdo = new SlavePdo(slave, pdoName, pdoIndex, osMax, pdoType.Fixed, pdoType.Mandatory, syncManager);
+
+                        pdos.Add(slavePdo);
+
+                        var slaveVariables = pdoType.Entry.Select(x =>
+                        {
+                            var variableIndex = (ushort)EsiUtilities.ParseHexDecString(x.Index.Value);
+                            var subIndex = x.SubIndex == null ? (byte)0 : (byte)EsiUtilities.ParseHexDecString(x.SubIndex);
+                            //// Improve. What about -1 if SubIndex does not exist?
+                            return new SlaveVariable(slavePdo, x.Name?.FirstOrDefault()?.Value, variableIndex, subIndex, dataDirection, EcUtilities.ParseEtherCatDataType(x.DataType?.Value), (byte)x.BitLen);
+                        }).ToList();
+
+                        slavePdo.SetVariables(slaveVariables);
+                    }
+                    else
+                    {
+                        for (ushort indexOffset = 0; indexOffset <= osMax - 1; indexOffset++)
+                        {
+                            var pdoName = $"{pdoType.Name.First().Value} [{indexOffset}]";
+                            var pdoIndex = (ushort)((ushort)EsiUtilities.ParseHexDecString(pdoType.Index.Value) + indexOffset);
+                            var syncManager = pdoType.SmSpecified ? pdoType.Sm : -1;
+                            var indexOffset_Tmp = indexOffset;
+
+                            var slavePdo = new SlavePdo(slave, pdoName, pdoIndex, osMax, pdoType.Fixed, pdoType.Mandatory, syncManager);
+
+                            pdos.Add(slavePdo);
+
+                            var slaveVariables = pdoType.Entry.Select(x =>
+                            {
+                                var variableIndex = (ushort)EsiUtilities.ParseHexDecString(x.Index.Value);
+                                var subIndex = (byte)(byte.Parse(x.SubIndex) + indexOffset_Tmp);
+                                //// Improve. What about -1 if SubIndex does not exist?
+                                return new SlaveVariable(slavePdo, x.Name.FirstOrDefault()?.Value, variableIndex, subIndex, dataDirection, EcUtilities.ParseEtherCatDataType(x.DataType?.Value), (byte)x.BitLen);
+                            }).ToList();
+
+                            slavePdo.SetVariables(slaveVariables);
+                        }
+                    }
+                }
+            }
+
+            // image data
+            if (module.ItemElementName == ItemChoiceType6.ImageData16x14)
+                base64ImageData = (byte[])module.Item;
+
+            // attach dynamic data
+            slave.Modules.Add(new SlaveInfoDynamicData(module.Name.First().Value, module.Type.ModuleClass, pdos, base64ImageData));
+        }
+
         public static SlaveInfo ScanDevices(string interfaceName, SlaveInfo referenceRootSlave = null, ILogger logger = null)
         {
             var nic = NetworkInterface.GetAllNetworkInterfaces().Where(x => x.Name == interfaceName).FirstOrDefault();
@@ -358,7 +447,7 @@ namespace EtherCAT.NET
                 .FirstOrDefault();
 
             if (networkInterface == null)
-                throw new Exception($"{ ErrorMessage.SoemWrapper_NetworkInterfaceNotFound } Interface name: '{ interfaceName }'.");
+                throw new Exception($"{ErrorMessage.SoemWrapper_NetworkInterfaceNotFound} Interface name: '{interfaceName}'.");
 
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                 interfaceName = $@"rpcap://\Device\NPF_{networkInterface.Id}";
@@ -624,8 +713,8 @@ namespace EtherCAT.NET
                     }
                     else
                     {
-                        string hasCompleteAccess = slave.Esi.Mailbox?.CoE?.CompleteAccess == true 
-                            ? " True" 
+                        string hasCompleteAccess = slave.Esi.Mailbox?.CoE?.CompleteAccess == true
+                            ? " True"
                             : "False";
 
                         slaveStateDescription.AppendLine($"Slave {slaveIndex,3} | CA: {hasCompleteAccess} | Req-State: 0x{requestedState:X4} | Act-State: 0x{actualState:X4} | AL-Status: 0x{alStatusCode:X4} | Sys-Time Diff: 0x{systemTimeDifference:X8} | Speed Counter Diff: 0x{speedCounterDifference:X4} | #Pdo out: {outputPdoCount} | #Pdo in: {inputPdoCount} | ({slave.DynamicData.Name})");
@@ -658,7 +747,57 @@ namespace EtherCAT.NET
                 sdoSubIndex,
                 dataset
             );
-        }       
+        }
+
+        /// <summary>
+        /// Reads an SDO value (index/subindex) with retry logic into <typeparamref name="T"/>.
+        /// </summary>
+        /// <typeparam name="T">
+        /// Struct/value type that can be marshaled from bytes <see cref="StructLayoutAttribute"/>).
+        /// </typeparam>
+        /// <param name="context">context</param>
+        /// <param name="slaveIndex">Slave index</param>
+        /// <param name="sdoIndex">COE/SDO index</param>
+        /// <param name="sdoSubIndex">Subindex</param>
+        /// <param name="value">Output value</param>
+        /// <param name="maxRetries">Number of additional attempts after a failure</param>
+        /// <param name="retryDelay">Delay in milliseconds between retries</param>
+        /// <returns>
+        /// <c>true</c> if the read succeeded (WorkCounter == 1); otherwise <c>false</c>.
+        /// </returns>
+        /// <remarks>
+        /// - Resets the requested buffer size (<c>psize</c>) before each read.
+        /// - Pins the buffer for the duration of the read attempts.
+        /// - On failure, waits and retries until the retry limit is reached.
+        /// </remarks>
+        public static bool TryReadSdoValue<T>(IntPtr context, ushort slaveIndex, ushort sdoIndex, byte sdoSubIndex, out T value, int maxRetries = 3, int retryDelay = 10)
+            where T : unmanaged
+        {
+            int size = Unsafe.SizeOf<T>();
+            byte[] buffer = new byte[size];
+            var handle = GCHandle.Alloc(buffer, GCHandleType.Pinned);
+            var dataPtr = handle.AddrOfPinnedObject();
+
+            const int Timeout = 200000;
+            var psize = size;
+            var retriesCopy = maxRetries;
+            int workCounter;
+
+            do
+            {
+                psize = size;
+                workCounter = EcCoE.ecx_SDOread(context, slaveIndex, sdoIndex, sdoSubIndex, false, ref psize, dataPtr, Timeout);
+
+                if (maxRetries < retriesCopy)
+                    Thread.Sleep(retryDelay);
+
+            } while (workCounter != 1 && --maxRetries >= 0);
+
+            value = Marshal.PtrToStructure<T>(dataPtr);
+            handle.Free();
+
+            return workCounter == 1;
+        }
 
         #endregion
     }

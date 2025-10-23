@@ -58,6 +58,8 @@ namespace EtherCAT.NET.Infrastructure
 
         public SlaveInfoDynamicData DynamicData { get; set; }
 
+        public List<SlaveInfoDynamicData> Modules { get; set; }
+
         public bool IgnoreSMConfig { get; set; } = false;
 
         #endregion

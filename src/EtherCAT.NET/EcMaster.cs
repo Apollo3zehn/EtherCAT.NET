@@ -207,26 +207,71 @@ namespace EtherCAT.NET
                         .SelectMany(pdo => pdo.Variables)
                         .Where(variable => variable.DataDirection == dataDirection))
                     {
-                        variable.DataPtr = IntPtr.Add(_ioMapPtr, ioMapByteOffset);
-                        variable.BitOffset = ioMapBitOffset;
+                        SetSlaveVariableMapping(variable, ref ioMapBitOffset, ref ioMapByteOffset);
+                    }
 
-                        if (variable.DataType == EthercatDataType.Boolean)
-                            variable.BitOffset = ioMapBitOffset; // bool is treated as bit-oriented
-
-                        Debug.WriteLine($"{variable.Name} {variable.DataPtr.ToInt64() - _ioMapPtr.ToInt64()}/{variable.BitOffset}");
-
-                        ioMapBitOffset += variable.BitLength;
-
-                        if (ioMapBitOffset > 7)
+                    if (slave.Modules != null)
+                    {
+                        foreach (var module in slave.Modules)
                         {
-                            ioMapBitOffset = ioMapBitOffset % 8;
-                            ioMapByteOffset += (variable.BitLength + 7) / 8;
+                            foreach (var variable in module.Pdos
+                                .Where(pdo => pdo.SyncManager >= 0).ToList()
+                                .SelectMany(pdo => pdo.Variables).ToList()
+                                .Where(variable => variable.DataDirection == dataDirection))
+                            {
+                                SetSlaveVariableMapping(variable, ref ioMapBitOffset, ref ioMapByteOffset);
+                            }
                         }
                     }
                 }
             }
 
             _logger.LogInformation($"IO map configured ({slaves.Count()} {(slaves.Count() > 1 ? "slaves" : "slave")}, {_actualIoMapSize} bytes)");
+        }
+
+        private void SetSlaveVariableMapping(SlaveVariable variable, ref int ioMapBitOffset, ref int ioMapByteOffset)
+        {
+            variable.DataPtr = IntPtr.Add(_ioMapPtr, ioMapByteOffset);
+            variable.BitOffset = ioMapBitOffset;
+
+            Debug.WriteLine($"{variable.Name} {variable.DataPtr.ToInt64() - _ioMapPtr.ToInt64()}/{variable.BitOffset}");
+
+            ioMapBitOffset += variable.BitLength;
+
+            if (ioMapBitOffset > 7)
+            {
+                ioMapByteOffset += ioMapBitOffset / 8;
+                ioMapBitOffset %= 8;
+            }
+        }
+
+        private void ConfigureModules(IList<SlaveInfo> slaves)
+        {
+            foreach (var slave in slaves)
+            {
+                var slaveIndex = (ushort)(Convert.ToUInt16(slaves.ToList().IndexOf(slave)) + 1);
+                ushort sdoIndex = 0xF050; // ETG.5001 Modular Device Profile: 0xF050 - Detected Module Ident List
+                byte sdoSubIndex = 0;
+
+                if (!EcHL.SdoEntryExists(Context, slaveIndex, sdoIndex, sdoSubIndex))
+                    continue;
+
+                if (!EcUtilities.TryReadSdoValue<int>(Context, slaveIndex, sdoIndex, sdoSubIndex, out var detectedModules))
+                    throw new InvalidDataException($"Could not read Modular Device Profile length on 0x{sdoIndex:X4}:0x{sdoSubIndex:X2}");
+
+                if (detectedModules != 0)
+                {
+                    slave.Modules = [];
+
+                    for (sdoSubIndex = 1; sdoSubIndex <= detectedModules; sdoSubIndex++)
+                    {
+                        if (!EcUtilities.TryReadSdoValue<int>(Context, slaveIndex, sdoIndex, sdoSubIndex, out var moduleIdent))
+                            throw new InvalidDataException($"Could not read Modular Device Profile entry on 0x{sdoIndex:X4}:0x{sdoSubIndex:X2}");
+
+                        EcUtilities.CreateModules(slave, moduleIdent);
+                    }
+                }
+            }
         }
 
         private void ConfigureDc()
@@ -289,6 +334,7 @@ namespace EtherCAT.NET
 
             this.ValidateSlaves(slaves, actualSlaves);
             this.ConfigureSlaves(slaves);
+            this.ConfigureModules(slaves);
             this.ConfigureIoMap(slaves);
             this.ConfigureDc();
             this.ConfigureSync01(slaves);

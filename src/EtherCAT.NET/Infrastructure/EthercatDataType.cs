@@ -1,7 +1,53 @@
-﻿namespace EtherCAT.NET.Infrastructure
+﻿using System;
+using System.Text.RegularExpressions;
+
+namespace EtherCAT.NET.Infrastructure
 {
+    class EhterCatDataTypeHelper
+    {
+        public static EthercatDataType ParseEthercatDataType(string value, out int? arrayLength)
+        {
+            var normalizedType = NormalizeEthercatType(value, out arrayLength);
+
+            if (Enum.TryParse<EthercatDataType>(normalizedType, ignoreCase: true, out var dataType))
+                return dataType;
+            else
+                return EthercatDataType.Unknown;
+        }
+
+        private static string NormalizeEthercatType(string value, out int? arrayLength)
+        {
+            arrayLength = null;
+
+            if (string.IsNullOrWhiteSpace(value))
+                return value;
+
+            var s = value.Trim();
+
+            // ARRAY [lo..hi] OF <Elem>
+            var ma = Regex.Match(s, @"^ARRAY\s*\[\s*(\d+)\s*\.\.\s*(\d+)\s*\]\s*OF\s*([A-Za-z_]\w*)$", RegexOptions.IgnoreCase);
+
+            if (ma.Success)
+            {
+                int lo = int.Parse(ma.Groups[1].Value);
+                int hi = int.Parse(ma.Groups[2].Value);
+                arrayLength = hi - lo + 1;
+                return ma.Groups[3].Value; // Element-Typ (z.B. BYTE, UNSIGNED8, BOOL, ...)
+            }
+
+            // STRING(n) / WSTRING(n) / OCTET STRING(n)
+            if (Regex.IsMatch(s, @"^STRING\s*\(\s*\d+\s*\)$", RegexOptions.IgnoreCase)) return "VisibleString";
+            if (Regex.IsMatch(s, @"^WSTRING\s*\(\s*\d+\s*\)$", RegexOptions.IgnoreCase)) return "UnicodeString";
+            if (Regex.IsMatch(s, @"^OCTET\s+STRING\s*\(\s*\d+\s*\)$", RegexOptions.IgnoreCase)) return "OctetString";
+
+            return s;
+        }
+    };
+
     public enum EthercatDataType
     {
+        Unknown = 0,
+
         // FAL defined data types
         //      Fixed length types
         //          Boolean types
