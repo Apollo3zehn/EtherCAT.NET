@@ -365,6 +365,57 @@ namespace SOEM.PInvoke
         [DllImport(EcShared.NATIVE_DLL_NAME)]
         public static extern void RegisterCallback(IntPtr context, UInt16 slaveIndex, IntPtr pCallBack);
 
+        /// <summary>
+        /// Set Watchdog divider for all slaves.
+        /// </summary>
+        /// <param name="watchdogDivider">Number of 25 MHz tics (minus 2) that represent the basic watchdog increment. (Default value is 100μs = 2498).</param>
+        [SuppressUnmanagedCodeSecurity]
+        [DllImport(EcShared.NATIVE_DLL_NAME)]
+        public static extern bool SetWatchdogDividerAllSlaves(IntPtr context, ushort watchdogDivider);
+
+        /// <summary>
+        /// Set Watchdog divider for specific slave.
+        /// </summary>
+        /// <param name="slaveIndex">The index of the corresponding slave.</param>
+        /// <param name="watchdogDivider">Number of 25 MHz tics (minus 2) that represent the basic watchdog increment. (Default value is 100μs = 2498).</param>
+        [SuppressUnmanagedCodeSecurity]
+        [DllImport(EcShared.NATIVE_DLL_NAME)]
+        public static extern bool SetWatchdogDivider(IntPtr context, ushort slaveIndex, ushort watchdogDivider);
+
+        /// <summary>
+        /// Set PDI Watchdog time for all slaves.
+        /// </summary>
+        /// <param name="watchdogTime">Watchdog Time PDI: number of basic watchdog increments (Default value with Watchdog divider 100μs means 100ms Watchdog).</param>
+        [SuppressUnmanagedCodeSecurity]
+        [DllImport(EcShared.NATIVE_DLL_NAME)]
+        public static extern bool SetPDIWatchdogAllSlaves(IntPtr context, ushort watchdogTime);
+
+        /// <summary>
+        /// Set PDI Watchdog time for specific slave.
+        /// </summary>
+        /// <param name="slaveIndex">The index of the corresponding slave.</param>
+        /// <param name="watchdogTime">Watchdog Time PDI: number of basic watchdog increments (Default value with Watchdog divider 100μs means 100ms Watchdog).</param>
+        [SuppressUnmanagedCodeSecurity]
+        [DllImport(EcShared.NATIVE_DLL_NAME)]
+        public static extern bool SetPDIWatchdog(IntPtr context, ushort slaveIndex, ushort watchdogTime);
+
+        /// <summary>
+        /// Set Process Data Watchdog time for all slaves.
+        /// </summary>
+        /// <param name="watchdogTime">Watchdog Time Process Data: number of basic watchdog increments (Default value with Watchdog divider 100μs means 100ms Watchdog).</param>
+        [SuppressUnmanagedCodeSecurity]
+        [DllImport(EcShared.NATIVE_DLL_NAME)]
+        public static extern bool SetProcessDataWatchdogAllSlaves(IntPtr context, ushort watchdogTime);
+
+        /// <summary>
+        /// Set Process Data Watchdog time for specific slave.
+        /// </summary>
+        /// <param name="slaveIndex">The index of the corresponding slave.</param>
+        /// <param name="watchdogTime">Watchdog Time Process Data: number of basic watchdog increments (Default value with Watchdog divider 100μs means 100ms Watchdog).</param>
+        [SuppressUnmanagedCodeSecurity]
+        [DllImport(EcShared.NATIVE_DLL_NAME)]
+        public static extern bool SetProcessDataWatchdog(IntPtr context, ushort slaveIndex, ushort watchdogTime);
+
         #endregion
 
         #region "called during OP"

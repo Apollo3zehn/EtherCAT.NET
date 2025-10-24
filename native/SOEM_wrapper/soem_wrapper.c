@@ -61,8 +61,11 @@ char tmp_char[255];
 
 bool check_ack_preop = true;
 
-// Process data watchdog register
-#define PD_WATCHDOG 0x0420
+// watchdog register
+#define WATCHDOG_DIVIDER            0x0400
+#define WATCHDOG_TIME_PDI           0x0410
+#define WATCHDOG_TIME_PROCESS_DATA  0x0420
+
 
 // backup for process data watchdog
 typedef struct {
@@ -1199,20 +1202,128 @@ void CALLCONV EnablePreopAckCheck(bool ack_enabled)
     check_ack_preop = ack_enabled;
 }
 
-static bool read_process_data_watchdog(ecx_contextt* context, uint16 cfgadr, uint16* out)
+static bool write_watchdog_register(ecx_contextt* context, uint16_t slaveIndex, uint16_t wd_register, uint16_t value)
 {
-    int wkc = ecx_FPRD(context->port, cfgadr, PD_WATCHDOG, sizeof(uint16), out, EC_TIMEOUTRET);
+    return ecx_FPWR(context->port, context->slavelist[slaveIndex].configadr, wd_register, sizeof(value), &value, EC_TIMEOUTRET) == 1;
+}
+
+static bool write_watchdog_register_all_slaves(ecx_contextt* context, uint16_t wd_register, uint16_t value)
+{
+	bool success = true;
+
+    for (uint16_t slaveIndex = 1; slaveIndex < *context->slavecount + 1; slaveIndex++)
+    {
+        if (!write_watchdog_register(context, slaveIndex, wd_register, value))
+        {
+            success = false;
+			break;
+        }
+    }
+
+    return success;
+}
+
+/*
+ *  Set Watchdog divider for all slaves
+ *
+ *  context: Current context pointer
+ *  watchdogDivder: Number of 25 MHz tics (minus 2) that represent the
+ *  basic watchdog increment. (Default value is 100μs = 2498)
+ *
+ *  returns: True if successfull false otherwise
+ */
+bool CALLCONV SetWatchdogDividerAllSlaves(ecx_contextt * context, uint16_t watchdogDivider)
+{
+    return write_watchdog_register_all_slaves(context, WATCHDOG_DIVIDER, watchdogDivider);
+}
+
+/*
+ *  Set Watchdog divider for specific slave
+ *
+ *  context: Current context pointer
+ *  slaveIndex: Index of the slave
+ *  watchdogDivder: Number of 25 MHz tics (minus 2) that represent the
+ *  basic watchdog increment. (Default value is 100μs = 2498)
+ *
+ *  returns: True if successfull false otherwise
+ */
+bool CALLCONV SetWatchdogDivider(ecx_contextt * context, int slaveIndex, uint16_t watchdogDivider)
+{
+    return write_watchdog_register(context, slaveIndex, WATCHDOG_DIVIDER, watchdogDivider);
+}
+
+/*
+ *  Set PDI Watchdog time for all slaves
+ *
+ *  context: Current context pointer
+ *  watchdogTime: Watchdog Time PDI: number of basic watchdog increments
+ *  (Default value with Watchdog divider 100μs means 100ms Watchdog)
+ *
+ *  returns: True if successfull false otherwise
+ */
+bool CALLCONV SetPDIWatchdogAllSlaves(ecx_contextt * context, uint16_t watchdogTime)
+{
+    return write_watchdog_register_all_slaves(context, WATCHDOG_TIME_PDI, watchdogTime);
+}
+
+/*
+ *  Set PDI Watchdog time for specific slave
+ *
+ *  context: Current context pointer
+ *  slaveIndex: Index of the slave
+ *  watchdogTime: Watchdog Time PDI: number of basic watchdog increments
+ *  (Default value with Watchdog divider 100μs means 100ms Watchdog)
+ *
+ *  returns: True if successfull false otherwise
+ */
+bool CALLCONV SetPDIWatchdog(ecx_contextt * context, int slaveIndex, uint16_t watchdogTime)
+{
+    return write_watchdog_register(context, slaveIndex, WATCHDOG_TIME_PDI, watchdogTime);
+}
+
+/*
+ *  Set Process Data Watchdog time for all slaves
+ *
+ *  context: Current context pointer
+ *  watchdogTime: Watchdog Time Process Data: number of basic watchdog increments
+ * (Default value with Watchdog divider 100μs means 100ms Watchdog)
+ *
+ *  returns: True if successfull false otherwise
+ */
+bool CALLCONV SetProcessDataWatchdogAllSlaves(ecx_contextt * context, uint16_t watchdogTime)
+{
+    return write_watchdog_register_all_slaves(context, WATCHDOG_TIME_PROCESS_DATA, watchdogTime);
+}
+
+/*
+ *  Set Process Data Watchdog time for specific slave
+ *
+ *  context: Current context pointer
+ *  slaveIndex: Index of the slave
+ *  watchdogTime: Watchdog Time Process Data: number of basic watchdog increments
+ * (Default value with Watchdog divider 100μs means 100ms Watchdog)
+ *
+ *  returns: True if successfull false otherwise
+ */
+bool CALLCONV SetProcessDataWatchdog(ecx_contextt * context, int slaveIndex, uint16_t watchdogTime)
+{
+    return write_watchdog_register(context, slaveIndex, WATCHDOG_TIME_PROCESS_DATA, watchdogTime);
+}
+
+static bool read_process_data_watchdog(ecx_contextt* context, uint16_t slaveIndex, uint16* out)
+{
+    int wkc = ecx_FPRD(context->port, context->slavelist[slaveIndex].configadr, WATCHDOG_TIME_PROCESS_DATA, sizeof(uint16), out, EC_TIMEOUTRET);
     return wkc > 0;
 }
 
-static bool write_process_data_watchdog(ecx_contextt* context, uint16 cfgadr, uint16 val)
+static bool write_process_data_watchdog(ecx_contextt* context, uint16_t slaveIndex, uint16 val)
 {
-    int wkc = ecx_FPWR(context->port, cfgadr, PD_WATCHDOG, sizeof(uint16), &val, EC_TIMEOUTRET);
-    if (wkc <= 0) return false;
+	if (!write_watchdog_register(context, slaveIndex, WATCHDOG_TIME_PROCESS_DATA, val))
+        return false;
 
     // read-back
     uint16 rd = 0;
-    wkc = ecx_FPRD(context->port, cfgadr, PD_WATCHDOG, sizeof(uint16), &rd, EC_TIMEOUTRET);
+    int wkc = ecx_FPRD(context->port, context->slavelist[slaveIndex].configadr, WATCHDOG_TIME_PROCESS_DATA, sizeof(uint16), &rd, EC_TIMEOUTRET);
 
     if (wkc <= 0 || rd != val) return false;
 
@@ -1228,7 +1339,7 @@ int CALLCONV RestoreProcessDataWatchdog(ecx_contextt* context)
         if (watchdog_backup->saved == 0)
 			continue;
 
-        if (!write_process_data_watchdog(context, context->slavelist[slaveIndex].configadr, watchdog_backup->value))
+        if (!write_process_data_watchdog(context, slaveIndex, watchdog_backup->value))
             return -0x0105;
     }
 
@@ -1297,14 +1408,14 @@ int CALLCONV ScanDevices(ecx_contextt* context, char* interfaceName, ec_slave_in
             if (pdwd_backup[slaveIndex].saved == 0)
             {
                 // read current watchdog time process data register
-                if (read_process_data_watchdog(context, context->slavelist[slaveIndex].configadr, &current_watchdog))
+                if (read_process_data_watchdog(context, slaveIndex, &current_watchdog))
                 {
                     pdwd_backup[slaveIndex].saved = 1;
                     pdwd_backup[slaveIndex].value = current_watchdog;
                 }
 
                 // clear watchdog time process data register
-                if (!write_process_data_watchdog(context, context->slavelist[slaveIndex].configadr, 0))
+                if (!write_process_data_watchdog(context, slaveIndex, 0))
                     return -0x0102;
             }
 

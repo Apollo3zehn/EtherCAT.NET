@@ -782,6 +782,44 @@ namespace EtherCAT.NET
             return success;
         }
 
+        /// <summary>
+        /// Set Watchdog divider for all slaves.
+        /// </summary>
+        /// <param name="watchdogDivider">Number of 25 MHz tics (minus 2) that represent the basic watchdog increment. (Default value is 100μs = 2498).</param>
+        public bool SetWatchdogDividerAllSlaves(ushort watchdogDivider) => EcHL.SetWatchdogDividerAllSlaves(Context, watchdogDivider);
+
+        /// <summary>
+        /// Set Watchdog divider for specific slave.
+        /// </summary>
+        /// <param name="slaveIndex">The index of the corresponding slave.</param>
+        /// <param name="watchdogDivider">Number of 25 MHz tics (minus 2) that represent the basic watchdog increment. (Default value is 100μs = 2498).</param>
+        public bool SetWatchdogDivider(ushort slaveIndex, ushort watchdogDivider) => EcHL.SetWatchdogDivider(Context, slaveIndex, watchdogDivider);
+
+        /// <summary>
+        /// Set PDI Watchdog time for all slaves.
+        /// </summary>
+        /// <param name="watchdogTime">Watchdog Time PDI: number of basic watchdog increments (Default value with Watchdog divider 100μs means 100ms Watchdog).</param>
+        public bool SetPDIWatchdogAllSlaves(ushort watchdogTime) => EcHL.SetPDIWatchdogAllSlaves(Context, watchdogTime);
+
+        /// <summary>
+        /// Set PDI Watchdog time for specific slave.
+        /// </summary>
+        /// <param name="slaveIndex">The index of the corresponding slave.</param>
+        /// <param name="watchdogTime">Watchdog Time PDI: number of basic watchdog increments (Default value with Watchdog divider 100μs means 100ms Watchdog).</param>
+        public bool SetPDIWatchdog(ushort slaveIndex, ushort watchdogTime) => EcHL.SetPDIWatchdog(Context, slaveIndex, watchdogTime);
+
+        /// <summary>
+        /// Set Process Data Watchdog time for all slaves.
+        /// </summary>
+        /// <param name="watchdogTime">Watchdog Time Process Data: number of basic watchdog increments (Default value with Watchdog divider 100μs means 100ms Watchdog).</param>
+        public bool SetProcessDataWatchdogAllSlaves(ushort watchdogTime) => EcHL.SetProcessDataWatchdogAllSlaves(Context, watchdogTime);
+
+        /// <summary>
+        /// Set Process Data Watchdog time for specific slave.
+        /// </summary>
+        /// <param name="slaveIndex">The index of the corresponding slave.</param>
+        /// <param name="watchdogTime">Watchdog Time Process Data: number of basic watchdog increments (Default value with Watchdog divider 100μs means 100ms Watchdog).</param>
+        public bool SetProcessDataWatchdog(ushort slaveIndex, ushort watchdogTime) => EcHL.SetProcessDataWatchdog(Context, slaveIndex, watchdogTime);
 
         #endregion
 

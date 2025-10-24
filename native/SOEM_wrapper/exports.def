@@ -39,6 +39,12 @@ EXPORTS
     GetProcessIo
     RequestCommonState
     EnablePreopAckCheck
+    SetWatchdogDividerAllSlaves
+    SetWatchdogDivider
+    SetPDIWatchdogAllSlaves
+    SetPDIWatchdog
+    SetProcessDataWatchdogAllSlaves
+    SetProcessDataWatchdog
     RestoreProcessDataWatchdog
     ScanDevices
     SdoWrite
