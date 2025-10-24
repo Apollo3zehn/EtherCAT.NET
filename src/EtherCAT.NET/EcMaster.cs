@@ -55,7 +55,7 @@ namespace EtherCAT.NET
         private Task _watchdogTask;
         private bool _watchDogActive = true;
 
-        private static readonly Dictionary<ushort, GCHandle> _callbackHandles = [];
+        private static readonly Dictionary<ushort, GCHandle> _callbackHandles = new Dictionary<ushort, GCHandle>();
 
         #endregion
 
