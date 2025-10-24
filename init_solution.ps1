@@ -67,6 +67,7 @@ if ($mWindows)
 {
 	cmake ./../../native `
         -DCMAKE_CONFIGURATION_TYPES:STRING="Debug;Release" `
+        -DCMAKE_POLICY_VERSION_MINIMUM='3.5' `
         -G "Visual Studio 16 2019" `
         -A "Win32"
 }
@@ -81,6 +82,7 @@ elseif ($mLinux)
             -DCMAKE_C_COMPILER=arm-linux-gnueabihf-gcc `
             -DCMAKE_CXX_COMPILER=arm-linux-gnueabihf-g++ `
             -DCMAKE_BUILD_TYPE=Release `
+            -DCMAKE_POLICY_VERSION_MINIMUM='3.5' `
             -DCMAKE_C_FLAGS='-Wno-error=stringop-overflow -Wno-stringop-overflow' `
             -DCMAKE_CXX_FLAGS='-Wno-error=stringop-overflow -Wno-stringop-overflow'
     }
@@ -88,6 +90,7 @@ elseif ($mLinux)
     {
         cmake ./../../native `
             -DCMAKE_BUILD_TYPE=Release `
+            -DCMAKE_POLICY_VERSION_MINIMUM='3.5' `
             -DCMAKE_C_FLAGS=-m32 `
             -DCMAKE_CXX_FLAGS=-m32 `
             -DCMAKE_TRY_COMPILE_TARGET_TYPE=STATIC_LIBRARY
@@ -121,6 +124,7 @@ if ($mWindows)
 {
 	cmake ./../../native `
         -DCMAKE_CONFIGURATION_TYPES:STRING="Debug;Release" `
+        -DCMAKE_POLICY_VERSION_MINIMUM='3.5' `
         -G "Visual Studio 16 2019" `
         -A "x64"
 }
@@ -130,6 +134,7 @@ elseif ($mLinux)
     {
         cmake ./../../native `
             -DCMAKE_BUILD_TYPE=Release `
+            -DCMAKE_POLICY_VERSION_MINIMUM='3.5' `
             -DCMAKE_C_FLAGS='-Wno-error=stringop-overflow -Wno-stringop-overflow' `
             -DCMAKE_CXX_FLAGS='-Wno-error=stringop-overflow -Wno-stringop-overflow'
     }
@@ -137,6 +142,7 @@ elseif ($mLinux)
     {
         cmake ./../../native `
             -DCMAKE_BUILD_TYPE=Release `
+            -DCMAKE_POLICY_VERSION_MINIMUM='3.5' `
             -DCMAKE_C_FLAGS=-m64 `
             -DCMAKE_CXX_FLAGS=-m64
     }
@@ -145,6 +151,7 @@ elseif ($mMacOS)
 {
     cmake ./../../native `
         -DCMAKE_BUILD_TYPE=Release `
+        -DCMAKE_POLICY_VERSION_MINIMUM='3.5' `
         -DCMAKE_C_FLAGS=-m64 `
         -DCMAKE_CXX_FLAGS=-m64
 }
