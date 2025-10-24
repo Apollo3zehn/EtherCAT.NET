@@ -261,7 +261,7 @@ namespace EtherCAT.NET
 
                 if (detectedModules != 0)
                 {
-                    slave.Modules = [];
+                    slave.Modules = new List<SlaveInfoDynamicData>();
 
                     for (sdoSubIndex = 1; sdoSubIndex <= detectedModules; sdoSubIndex++)
                     {
