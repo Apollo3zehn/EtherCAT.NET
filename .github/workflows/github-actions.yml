@@ -7,33 +7,203 @@ on:
       # - dev
       - addGitHubActions
 
+env:
+  CONFIGURATION: Release
+  FILE_BASE: libsoem_wrapper
+  FILE_EXT_LINUX: .so
+  FILE_EXT_WINDOWS: .dll
+  ARTIFACTS: "artifacts"
+  PACKAGES: "packages"
+  DOWNLOAD: "download"
+  BIN32: "bin32"
+  BIN64: "bin64"
+  SOEM_WRAPPER: "SOEM_wrapper"
+  LINUX_X86: "linux-x86"
+  LINUX_X64: "linux-x64"
+  LINUX_ARM: "linux-arm"
+  LINUX_ARM64: "linux-arm64"
+  WIN_X86: "win-x86"
+  WIN_X64: "win-x64"
+  ARM32: "arm32"
+  ARM64: "arm64"
+
+
 jobs:
-  build:
-    strategy:
-      matrix:
-        os:
-          - windows-latest      # Windows x64
-          - ubuntu-latest       # Linux x64
-          - ubuntu-24.04-arm    # Linux arm64
 
-    runs-on: ${{ matrix.os }}
+  build-linux-x64:
 
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+
+      - run: echo "Linux x64 build"
+
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      # 32-bit Toolchain for Linux x64
+      - name: Install 32-bit toolchain (x86)
+        run: |
+          sudo dpkg --add-architecture i386
+          sudo apt-get update
+          sudo apt-get install -y gcc-multilib g++-multilib
+
+      - name: Run PowerShell init script
+        shell: pwsh
+        run: |
+          dotnet --info
+          ./init_solution.ps1
+
+      - name: Native build 32
+        run: make --directory "./${{ env.ARTIFACTS }}/${{ env.BIN32 }}"
+
+      - name: Native build 64
+        run: make --directory "./${{ env.ARTIFACTS }}/${{ env.BIN64 }}"
+
+      # Upload native artifacts
+      - name: Upload 32-bit artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.FILE_BASE }}_${{ env.LINUX_X86 }}
+          path: ./${{ env.ARTIFACTS }}/${{ env.BIN32 }}/${{ env.SOEM_WRAPPER }}/${{ env.FILE_BASE }}${{ env.FILE_EXT_LINUX }}
+
+      - name: Upload 64-bit artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.FILE_BASE }}_${{ env.LINUX_X64 }}
+          path: ./${{ env.ARTIFACTS }}/${{ env.BIN64 }}/${{ env.SOEM_WRAPPER }}/${{ env.FILE_BASE }}${{ env.FILE_EXT_LINUX }}
+
+      # Build .NET project
+      - name: .NET build
+        run: dotnet build ./src/EtherCAT.NET/EtherCAT.NET.csproj -c $Env:CONFIGURATION
+
+
+  build-linux-arm:
+
+    runs-on: ubuntu-24.04-arm
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+
+      - run: echo "Linux Arm build"
+
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      # 32-bit Toolchain for ARM (armhf Cross-Compile)
+      - name: Install ARM 32-bit toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y crossbuild-essential-armhf
+
+      - name: Run PowerShell init script
+        shell: pwsh
+        run: |
+          dotnet --info
+          ./init_solution.ps1
+
+      - name: Native build 32
+        run: make --directory "./${{ env.ARTIFACTS }}/${{ env.ARM32 }}"
+
+      - name: Native build 64
+        run: make --directory "./${{ env.ARTIFACTS }}/${{ env.ARM64 }}"
+
+      # Upload native artifacts
+      - name: Upload 32-bit artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.FILE_BASE }}_${{ env.LINUX_ARM }}
+          path: ./${{ env.ARTIFACTS }}/${{ env.ARM32 }}/${{ env.SOEM_WRAPPER }}/${{ env.FILE_BASE }}${{ env.FILE_EXT_LINUX }}
+
+      - name: Upload 64-bit artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.FILE_BASE }}_${{ env.LINUX_ARM64 }}
+          path: ./${{ env.ARTIFACTS }}/${{ env.ARM64 }}/${{ env.SOEM_WRAPPER }}/${{ env.FILE_BASE }}${{ env.FILE_EXT_LINUX }}
+
+
+  build-windows:
+
+    runs-on: windows-latest
+    needs: [build-linux-x64, build-linux-arm]
 
     defaults:
       run:
         shell: pwsh
 
-
     steps:
 
-      - run: echo "The job was automatically triggered by a ${{ github.event_name }} event."
-      - run: echo "This job is now running on a ${{ runner.os }} server."
+      - run: echo "Windows build on ${{ runner.arch }}"
 
       - name: Checkout repository
         uses: actions/checkout@v5
 
-      # 1) Init-Skript
-      - name: Run powershell script
+      - name: Add msbuild to PATH
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Run PowerShell init script
         run: |
           dotnet --info
           ./init_solution.ps1
+
+      - name: Native build 32 (Windows)
+        run: msbuild ./${{ env.ARTIFACTS }}/${{ env.BIN32 }}/${{ env.SOEM_WRAPPER }}/soem_wrapper.vcxproj /p:Configuration=$Env:CONFIGURATION
+
+      - name: Native build 64 (Windows)
+        run: msbuild ./${{ env.ARTIFACTS }}/${{ env.BIN64 }}/${{ env.SOEM_WRAPPER }}/soem_wrapper.vcxproj /p:Configuration=$Env:CONFIGURATION
+
+      # Upload native artifacts
+      - name: Upload 32-bit artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.FILE_BASE }}_${{ env.WIN_X86 }}
+          path: ./${{ env.ARTIFACTS }}/${{ env.BIN32 }}/${{ env.SOEM_WRAPPER }}/${{ env.CONFIGURATION }}/
+
+      - name: Upload 64-bit artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.FILE_BASE }}_${{ env.WIN_X64 }}
+          path: ./${{ env.ARTIFACTS }}/${{ env.BIN64 }}/${{ env.SOEM_WRAPPER }}/${{ env.CONFIGURATION }}/
+
+      # Download linux artifacts
+      - name: Download Linux x86 libs
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.FILE_BASE }}_${{ env.LINUX_X86 }}
+          path: ./${{ env.ARTIFACTS }}/${{ env.DOWNLOAD }}/${{ env.LINUX_X86 }}
+
+      - name: Download Linux x64 libs
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.FILE_BASE }}_${{ env.LINUX_X64 }}
+          path: ./${{ env.ARTIFACTS }}/${{ env.DOWNLOAD }}/${{ env.LINUX_X64 }}
+
+      - name: Download ARM 32-bit libs
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.FILE_BASE }}_${{ env.LINUX_ARM }}
+          path: ./${{ env.ARTIFACTS }}/${{ env.DOWNLOAD }}/${{ env.LINUX_ARM }}
+
+      - name: Download ARM 64-bit libs
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.FILE_BASE }}_${{ env.LINUX_ARM64 }}
+          path: ./${{ env.ARTIFACTS }}/${{ env.DOWNLOAD }}/${{ env.LINUX_ARM64 }}
+
+      # Build .NET project
+      - name: .NET build
+        run: dotnet build ./src/EtherCAT.NET/EtherCAT.NET.csproj -c $Env:CONFIGURATION /p:IsPublicBuild=True
+
+      # Upload .NET nuget packages
+      - name: Upload .NET nuget packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuget_packages
+          path: ./${{ env.ARTIFACTS }}/${{ env.PACKAGES }}/
