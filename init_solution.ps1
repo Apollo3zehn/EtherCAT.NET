@@ -68,7 +68,7 @@ if ($mWindows)
 	cmake ./../../native `
         -DCMAKE_CONFIGURATION_TYPES:STRING="Debug;Release" `
         -DCMAKE_POLICY_VERSION_MINIMUM='3.5' `
-        -G "Visual Studio 16 2019" `
+        -G "Visual Studio 17 2022" `
         -A "Win32"
 }
 elseif ($mLinux)
@@ -125,7 +125,7 @@ if ($mWindows)
 	cmake ./../../native `
         -DCMAKE_CONFIGURATION_TYPES:STRING="Debug;Release" `
         -DCMAKE_POLICY_VERSION_MINIMUM='3.5' `
-        -G "Visual Studio 16 2019" `
+        -G "Visual Studio 17 2022" `
         -A "x64"
 }
 elseif ($mLinux)
