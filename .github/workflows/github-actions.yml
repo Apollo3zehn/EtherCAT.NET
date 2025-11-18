@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+    branches:
+      # - main
+      # - dev
+      - addGitHubActions
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os:
+          - windows-latest      # Windows x64
+          - ubuntu-latest       # Linux x64
+          - ubuntu-24.04-arm    # Linux arm64
+
+    runs-on: ${{ matrix.os }}
+
+
+    defaults:
+      run:
+        shell: pwsh
+
+
+    steps:
+
+      - run: echo "The job was automatically triggered by a ${{ github.event_name }} event."
+      - run: echo "This job is now running on a ${{ runner.os }} server."
+
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      # 1) Init-Skript
+      - name: Run powershell script
+        run: |
+          dotnet --info
+          ./init_solution.ps1
