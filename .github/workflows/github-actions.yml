@@ -85,6 +85,8 @@ jobs:
   build-linux-arm:
 
     runs-on: ubuntu-24.04-arm
+    container:
+      image: ubuntu:20.04
 
     defaults:
       run:
@@ -100,8 +102,8 @@ jobs:
       # 32-bit Toolchain for ARM (armhf Cross-Compile)
       - name: Install ARM 32-bit toolchain
         run: |
-          sudo apt-get update
-          sudo apt-get install -y crossbuild-essential-armhf
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends tzdata crossbuild-essential-armhf
 
       - name: Run PowerShell init script
         shell: pwsh
