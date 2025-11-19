@@ -3,15 +3,16 @@ name: CI
 on:
   push:
     branches:
-      # - main
-      # - dev
+      - main
+      - dev
       - addGitHubActions
+
+  pull_request:
 
 env:
   CONFIGURATION: Release
   FILE_BASE: libsoem_wrapper
   FILE_EXT_LINUX: .so
-  FILE_EXT_WINDOWS: .dll
   ARTIFACTS: "artifacts"
   PACKAGES: "packages"
   DOWNLOAD: "download"
@@ -26,7 +27,6 @@ env:
   WIN_X64: "win-x64"
   ARM32: "arm32"
   ARM64: "arm64"
-
 
 jobs:
 
@@ -81,7 +81,6 @@ jobs:
       - name: .NET build
         run: dotnet build ./src/EtherCAT.NET/EtherCAT.NET.csproj -c $Env:CONFIGURATION
 
-
   build-linux-arm:
 
     runs-on: ubuntu-24.04-arm
@@ -96,20 +95,59 @@ jobs:
 
       - run: echo "Linux Arm build"
 
+      - name: Print container OS info
+        run: |
+          . /etc/os-release
+          echo "Linux ARM build on: $NAME $VERSION (ID=$ID, VERSION_ID=$VERSION_ID)"
+          uname -a
+
+      - name: Install PowerShell and 32-bit toolchain
+        run: |
+          set -e
+          export DEBIAN_FRONTEND=noninteractive
+
+          # Native tools and prerequisites
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            wget \
+            ca-certificates \
+            tar \
+            tzdata \
+            git \
+            build-essential \
+            cmake \
+            crossbuild-essential-armhf
+
+          # Avoid interactive tzdata prompts
+          ln -fs /usr/share/zoneinfo/Etc/UTC /etc/localtime || true
+          dpkg-reconfigure --frontend noninteractive tzdata || true
+
+          # Install PowerShell from Linux arm64 tarball
+          PS_VERSION=7.5.4
+          wget "https://github.com/PowerShell/PowerShell/releases/download/v${PS_VERSION}/powershell-${PS_VERSION}-linux-arm64.tar.gz" \
+            -O /tmp/powershell.tar.gz
+
+          mkdir -p /opt/microsoft/powershell/${PS_VERSION}
+          tar zxf /tmp/powershell.tar.gz -C /opt/microsoft/powershell/${PS_VERSION}
+
+          # Ensure the pwsh binary is executable
+          chmod +x /opt/microsoft/powershell/${PS_VERSION}/pwsh
+
+          # Create/overwrite global symlink
+          ln -sf /opt/microsoft/powershell/${PS_VERSION}/pwsh /usr/bin/pwsh
+
+          # Quick sanity check
+          pwsh -NoLogo -Command '$PSVersionTable'
+
       - name: Checkout repository
         uses: actions/checkout@v5
 
-      # 32-bit Toolchain for ARM (armhf Cross-Compile)
-      - name: Install ARM 32-bit toolchain
-        run: |
-          apt-get update
-          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends tzdata crossbuild-essential-armhf
+      - name: Mark repo as safe for git
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
       - name: Run PowerShell init script
         shell: pwsh
-        run: |
-          dotnet --info
-          ./init_solution.ps1
+        run: ./init_solution.ps1
 
       - name: Native build 32
         run: make --directory "./${{ env.ARTIFACTS }}/${{ env.ARM32 }}"
@@ -129,7 +167,6 @@ jobs:
         with:
           name: ${{ env.FILE_BASE }}_${{ env.LINUX_ARM64 }}
           path: ./${{ env.ARTIFACTS }}/${{ env.ARM64 }}/${{ env.SOEM_WRAPPER }}/${{ env.FILE_BASE }}${{ env.FILE_EXT_LINUX }}
-
 
   build-windows:
 
