@@ -34,12 +34,20 @@
       <PackagePath>runtimes/win-x64/native</PackagePath>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="./../../artifacts/download/bin32/libsoem_wrapper.so" Link="runtimes/linux-x86/native/libsoem_wrapper.so">
+    <Content Include="./../../artifacts/download/linux-x86/libsoem_wrapper.so" Link="runtimes/linux-x86/native/libsoem_wrapper.so">
       <PackagePath>runtimes/linux-x86/native</PackagePath>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="./../../artifacts/download/bin64/libsoem_wrapper.so" Link="runtimes/linux-x64/native/libsoem_wrapper.so">
+    <Content Include="./../../artifacts/download/linux-x64/libsoem_wrapper.so" Link="runtimes/linux-x64/native/libsoem_wrapper.so">
       <PackagePath>runtimes/linux-x64/native</PackagePath>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="./../../artifacts/download/linux-arm/libsoem_wrapper.so" Link="runtimes/linux-arm/native/libsoem_wrapper.so">
+      <PackagePath>runtimes/linux-arm/native</PackagePath>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="./../../artifacts/download/linux-arm64/libsoem_wrapper.so" Link="runtimes/linux-arm64/native/libsoem_wrapper.so">
+      <PackagePath>runtimes/linux-arm64/native</PackagePath>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
@@ -67,12 +75,12 @@
   </ItemGroup>
 
   <ItemGroup Condition="'$(IsPublicBuild)' == 'False' AND $(IsLinux) == 'True' AND '$(IsLinuxArm)' == 'True'">
-    <Content Include="./../../artifacts/arm32/SOEM_wrapper/libsoem_wrapper.so" Link="runtimes/arm/native/libsoem_wrapper.so">
-      <PackagePath>runtimes/arm/native</PackagePath>
+    <Content Include="./../../artifacts/arm32/SOEM_wrapper/libsoem_wrapper.so" Link="runtimes/linux-arm/native/libsoem_wrapper.so">
+      <PackagePath>runtimes/linux-arm/native</PackagePath>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="./../../artifacts/arm64/SOEM_wrapper/libsoem_wrapper.so" Link="runtimes/arm64/native/libsoem_wrapper.so">
-      <PackagePath>runtimes/arm64/native</PackagePath>
+    <Content Include="./../../artifacts/arm64/SOEM_wrapper/libsoem_wrapper.so" Link="runtimes/linux-arm64/native/libsoem_wrapper.so">
+      <PackagePath>runtimes/linux-arm64/native</PackagePath>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
