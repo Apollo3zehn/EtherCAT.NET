@@ -3,10 +3,8 @@ name: CI
 on:
   push:
     branches:
-      - main
+      - master
       - dev
-      - addGitHubActions
-
   pull_request:
 
 env:
@@ -30,9 +28,30 @@ env:
 
 jobs:
 
+  detect-branch:
+
+    runs-on: ubuntu-latest
+
+    outputs:
+      is_master_branch: ${{ steps.detect.outputs.is_master_branch }}
+
+    steps:
+      - name: Detect master branch
+        id: detect
+        run: |
+          if [ "$GITHUB_REF" = "refs/heads/master" ]; then
+            echo "is_master_branch=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_master_branch=false" >> "$GITHUB_OUTPUT"
+          fi
+
   build-linux-x64:
 
     runs-on: ubuntu-latest
+    needs: detect-branch
+
+    env:
+      IS_MASTER_BRANCH: ${{ needs.detect-branch.outputs.is_master_branch }}
 
     defaults:
       run:
@@ -66,12 +85,14 @@ jobs:
 
       # Upload native artifacts
       - name: Upload 32-bit artifact
+        if: env.IS_MASTER_BRANCH == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.FILE_BASE }}_${{ env.LINUX_X86 }}
           path: ./${{ env.ARTIFACTS }}/${{ env.BIN32 }}/${{ env.SOEM_WRAPPER }}/${{ env.FILE_BASE }}${{ env.FILE_EXT_LINUX }}
 
       - name: Upload 64-bit artifact
+        if: env.IS_MASTER_BRANCH == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.FILE_BASE }}_${{ env.LINUX_X64 }}
@@ -84,6 +105,11 @@ jobs:
   build-linux-arm:
 
     runs-on: ubuntu-24.04-arm
+    needs: detect-branch
+
+    env:
+      IS_MASTER_BRANCH: ${{ needs.detect-branch.outputs.is_master_branch }}
+
     container:
       image: ubuntu:20.04
 
@@ -157,12 +183,14 @@ jobs:
 
       # Upload native artifacts
       - name: Upload 32-bit artifact
+        if: env.IS_MASTER_BRANCH == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.FILE_BASE }}_${{ env.LINUX_ARM }}
           path: ./${{ env.ARTIFACTS }}/${{ env.ARM32 }}/${{ env.SOEM_WRAPPER }}/${{ env.FILE_BASE }}${{ env.FILE_EXT_LINUX }}
 
       - name: Upload 64-bit artifact
+        if: env.IS_MASTER_BRANCH == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.FILE_BASE }}_${{ env.LINUX_ARM64 }}
@@ -171,7 +199,10 @@ jobs:
   build-windows:
 
     runs-on: windows-latest
-    needs: [build-linux-x64, build-linux-arm]
+    needs: [detect-branch, build-linux-x64, build-linux-arm]
+
+    env:
+      IS_MASTER_BRANCH: ${{ needs.detect-branch.outputs.is_master_branch }}
 
     defaults:
       run:
@@ -200,12 +231,14 @@ jobs:
 
       # Upload native artifacts
       - name: Upload 32-bit artifact
+        if: env.IS_MASTER_BRANCH == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.FILE_BASE }}_${{ env.WIN_X86 }}
           path: ./${{ env.ARTIFACTS }}/${{ env.BIN32 }}/${{ env.SOEM_WRAPPER }}/${{ env.CONFIGURATION }}/
 
       - name: Upload 64-bit artifact
+        if: env.IS_MASTER_BRANCH == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.FILE_BASE }}_${{ env.WIN_X64 }}
@@ -213,24 +246,28 @@ jobs:
 
       # Download linux artifacts
       - name: Download Linux x86 libs
+        if: env.IS_MASTER_BRANCH == 'true'
         uses: actions/download-artifact@v4
         with:
           name: ${{ env.FILE_BASE }}_${{ env.LINUX_X86 }}
           path: ./${{ env.ARTIFACTS }}/${{ env.DOWNLOAD }}/${{ env.LINUX_X86 }}
 
       - name: Download Linux x64 libs
+        if: env.IS_MASTER_BRANCH == 'true'
         uses: actions/download-artifact@v4
         with:
           name: ${{ env.FILE_BASE }}_${{ env.LINUX_X64 }}
           path: ./${{ env.ARTIFACTS }}/${{ env.DOWNLOAD }}/${{ env.LINUX_X64 }}
 
       - name: Download ARM 32-bit libs
+        if: env.IS_MASTER_BRANCH == 'true'
         uses: actions/download-artifact@v4
         with:
           name: ${{ env.FILE_BASE }}_${{ env.LINUX_ARM }}
           path: ./${{ env.ARTIFACTS }}/${{ env.DOWNLOAD }}/${{ env.LINUX_ARM }}
 
       - name: Download ARM 64-bit libs
+        if: env.IS_MASTER_BRANCH == 'true'
         uses: actions/download-artifact@v4
         with:
           name: ${{ env.FILE_BASE }}_${{ env.LINUX_ARM64 }}
@@ -238,11 +275,30 @@ jobs:
 
       # Build .NET project
       - name: .NET build
-        run: dotnet build ./src/EtherCAT.NET/EtherCAT.NET.csproj -c $Env:CONFIGURATION /p:IsPublicBuild=True
+        shell: pwsh
+        run: |
+            $publicArg = '/p:IsPublicBuild=False'
+            if ($Env:IS_MASTER_BRANCH -eq 'true') {
+              $publicArg = '/p:IsPublicBuild=True'
+            }
+
+            dotnet build ./src/EtherCAT.NET/EtherCAT.NET.csproj -c $Env:CONFIGURATION $publicArg
 
       # Upload .NET nuget packages
       - name: Upload .NET nuget packages
+        if: env.IS_MASTER_BRANCH == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: nuget_packages
           path: ./${{ env.ARTIFACTS }}/${{ env.PACKAGES }}/
+
+      # Push packages to nuget
+      - name: Push packages to nuget.org
+        if: env.IS_MASTER_BRANCH == 'true'
+        run: >
+          dotnet nuget push .\${{ env.ARTIFACTS }}\${{ env.PACKAGES }}\*.nupkg
+          --api-key $Env:NUGET_API_KEY
+          --source https://api.nuget.org/v3/index.json
+          --skip-duplicate
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
