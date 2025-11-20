@@ -1,6 +1,6 @@
 # EtherCAT.NET
 
-[![AppVeyor](https://ci.appveyor.com/api/projects/status/github/apollo3zehn/ethercat.net?svg=true&branch=master)](https://ci.appveyor.com/project/Apollo3zehn/ethercat-net)
+[![build](https://github.com/XzuluX/EtherCAT.NET/actions/workflows/github-actions.yml/badge.svg)](https://github.com/XzuluX/EtherCAT.NET/actions/workflows/github-actions.yml)
 [![NuGet](https://img.shields.io/nuget/vpre/ethercat.net.svg)](https://www.nuget.org/packages/EtherCAT.NET)
 
 EtherCAT.NET provides high-level abstraction of the underlying native *Simple Open Source EtherCAT Master* ([SOEM](https://github.com/OpenEtherCATsociety/soem)). To accomplish this, the solution contains another project: SOEM.PInvoke. It comprises the actual native libraries for Windows and Linux and allows to simply P/Invoke into the native SOEM methods. The intention is to provide a managed way to access the native SOEM master. EtherCAT.NET depends on SOEM.PInvoke and adds classes for high-level abstraction.
